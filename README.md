@@ -18,7 +18,6 @@ Because I was unhappy with the following aspects of AHKHID:
 * Too much stuff in the global namespace.
 * Many functions named differently to the DLL calls they make, repetitions of the same DLL Call across funcs etc.
 * Too hard (for me) to understand parts of the code as a lot of it was overly complicated by the need to perform bitwise operations manually.
-* Too difficult to use the library, as you got often pure memory STRUCTs back, and had to do bitwise operations to interpret it.
 * AHKHID allows you to query device data (ie you get binary info from it), but for devices other than keyboard and mouse, it does not allow you to *interpret* that data. The RawInput API has a set of `HidP_` calls which tell you the *capabilities* of the device, allowing you to read any HID compliant joystick (99% of all sticks on the market) regardless of how many buttons or axes they have. AHKHID does not implement these.
 
 ##How? ...
