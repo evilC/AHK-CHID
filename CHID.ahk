@@ -10,10 +10,10 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 
 Class _CHID {
 	static STRUCT_RAWINPUTDEVICELIST := "HANDLE hDevice,DWORD  dwType"
-        ,RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-        ,TYPE_RIM := {0: "Mouse", 1: "Keyboard", 2: "Other"}
+    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+    static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
-	GetRawInputDeviceList(ByRef DeviceList:=0, ByRef iCount:=0){
+	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -34,7 +34,7 @@ Class _CHID {
 
 		sizeof(RAWINPUTDEVICELIST) = 8
 		
-		RETURNS: An array of iCount STRUCTS:
+		RETURNS: An array of puiNumDevices STRUCTS:
 		typedef struct tagRAWINPUTDEVICELIST {
 		  HANDLE hDevice;											// A handle to the raw input device.
 		  DWORD  dwType;											// The type of device. This can be one of the following values
@@ -43,17 +43,17 @@ Class _CHID {
 																	// RIM_TYPEMOUSE 		0 - The device is a mouse.
 		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;		
 		*/
-		if IsByRef(DeviceList) {			; DeviceList contains a struct, not a number
-			DeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" iCount "]")
+		if IsByRef(pRawInputDeviceList) {			; pRawInputDeviceList contains a struct, not a number
+			pRawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
 		}
 		; Perform the call
-		r := DllCall("GetRawInputDeviceList", "Ptr", DeviceList?DeviceList[]:0, "UInt*", iCount, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+		r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList?pRawInputDeviceList[]:0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		
 		;Check for errors
 		if ((r = -1) Or ErrorLevel) {
 			Return -1, ErrorLevel := "GetRawInputDeviceList call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
-		Return iCount
+		Return puiNumDevices
 	}
 	
 	; Not converted to _Struct yet
