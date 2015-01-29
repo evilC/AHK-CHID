@@ -14,6 +14,26 @@ Class _CHID {
         ,TYPE_RIM := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
 	GetRawInputDeviceList(ByRef DeviceList:=0, ByRef iCount:=0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
+
+		UINT WINAPI GetRawInputDeviceList(
+		  _Out_opt_  PRAWINPUTDEVICELIST pRawInputDeviceList,		// An array of RAWINPUTDEVICELIST structures for the devices attached to the system.
+																	// If NULL, the number of devices are returned in *puiNumDevices
+		  _Inout_    PUINT puiNumDevices,							// If pRawInputDeviceList is NULL, the function populates this variable with the number of devices attached to the system;
+																	// otherwise, this variable specifies the number of RAWINPUTDEVICELIST structures that can be contained in the buffer to which
+																	// pRawInputDeviceList points. If this value is less than the number of devices attached to the system,
+																	// the function returns the actual number of devices in this variable and fails with ERROR_INSUFFICIENT_BUFFER.
+		  _In_       UINT cbSize									// The size of a RAWINPUTDEVICELIST structure, in bytes
+		);
+
+		struct tagRAWINPUTDEVICELIST {
+		  HANDLE hDevice;
+		  DWORD  dwType;
+		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
+
+		sizeof(RAWINPUTDEVICELIST) = 8
+		*/
 		if IsByRef(DeviceList) {			; DeviceList contains a struct, not a number
 			DeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" iCount "]")
 		}
