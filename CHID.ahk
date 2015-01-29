@@ -33,6 +33,15 @@ Class _CHID {
 		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
 
 		sizeof(RAWINPUTDEVICELIST) = 8
+		
+		RETURNS: An array of iCount STRUCTS:
+		typedef struct tagRAWINPUTDEVICELIST {
+		  HANDLE hDevice;											// A handle to the raw input device.
+		  DWORD  dwType;											// The type of device. This can be one of the following values
+																	// RIM_TYPEHID 			2 - The device is an HID that is not a keyboard and not a mouse
+																	// RIM_TYPEKEYBOARD 	1 - The device is a keyboard.
+																	// RIM_TYPEMOUSE 		0 - The device is a mouse.
+		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;		
 		*/
 		if IsByRef(DeviceList) {			; DeviceList contains a struct, not a number
 			DeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" iCount "]")
