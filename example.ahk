@@ -1,14 +1,11 @@
-#include <CHID>
 #singleinstance force
+#Include <CHID>
 
-HID := new _HID()
+CHID := new _CHID()
 
-iCount := HID.GetRawInputDeviceList(0,iCount)
-DeviceList := new _Struct("HID.STRUCT_RAWINPUTDEVICELIST[" iCount "]")
-HID.GetRawInputDeviceList(DeviceList, iCount)
-
-Loop %  iCount {
-	s .= "#" A_Index " - Handle: " DeviceList[A_Index].hDevice ", Type: " HID.TYPE_RIM[DeviceList[A_Index].dwType] "`n"
+DevCount := CHID.GetRawInputDeviceList(DeviceList, CHID.GetRawInputDeviceList())
+Loop % DevCount {
+	s .= "#" A_Index " - Handle: " DeviceList[A_Index].hDevice ", Type: " _CHID.TYPE_RIM[DeviceList[A_Index].dwType] "`n"
 }
 
 msgbox % s
