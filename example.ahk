@@ -8,7 +8,7 @@ CHID := new _CHID()
 
 ; Use NumDevices straight away, class will automatically make the needed calls to discover value.
 Loop % CHID.DeviceList.NumDevices {
-	dev := CHID.DeviceList.RAWINPUTDEVICELIST[A_Index]
+	dev := CHID.DeviceList.Device[A_Index]
 	LV_Add(,A_INDEX, _CHID.RIM_TYPE[dev.Type])
 }
 

@@ -48,7 +48,7 @@ Class _CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
-	__Get(aParam, bParam := ""){
+	__Get(aParam){
 		if (aParam = "DeviceList"){
 			return new this._CDeviceList(this)
 		}
@@ -65,17 +65,21 @@ Class _CHID {
 			
 		}
 		
-		__Get(aParam, bParam := ""){
+		_Call(aTarget, aName, aParams*){
+			msgbox HERE
+		}
+		
+		__Get(aParam){
 			if (aParam = "NumDevices"){
 				; Querying number of devices
 				this.NumDevices := this._root.GetRawInputDeviceList()
 				return this.NumDevices
-			} else if (aParam = "RAWINPUTDEVICELIST"){
+			} else if (aParam = "Device"){
 				;if (!ObjHasKey(this, "_RAWINPUTDEVICELIST")){
 					this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
-					this.RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
+					this.Device := RAWINPUTDEVICELIST
 					; DO NOT return a value!
-					;return this.RAWINPUTDEVICELIST
+					;return this.Device
 				;}
 			}
 		}
