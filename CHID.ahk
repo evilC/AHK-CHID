@@ -38,16 +38,57 @@ GuiClose:
 */
 
 Class _CHID {
-	static STRUCT_RAWINPUTDEVICELIST := "HANDLE Device; DWORD Type;"
-	
-	static STRUCT_RID_DEVICE_INFO := "DWORD Size; DWORD Type; { _CHID.STRUCT_RID_DEVICE_INFO_MOUSE  mouse; _CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard; _CHID.STRUCT_RID_DEVICE_INFO_HID hid; };"
-	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD Id; DWORD NumberOfButtons; DWORD SampleRate; BOOL HasHorizontalWheel;"
-	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD Type; DWORD SubType; DWORD KeyboardMode; DWORD NumberOfFunctionKeys; DWORD NumberOfIndicators; DWORD NumberOfKeysTotal;"
-	static STRUCT_RID_DEVICE_INFO_HID := "DWORD VendorId, DWORD ProductId, DWORD VersionNumber, USHORT UsagePage, USHORT Usage;"
-
+	; Constants pulled from header files
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-    static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
+	; Proprietatary Constants
+    static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
+
+	; Structures
+	static STRUCT_RAWINPUTDEVICELIST := "
+	(
+		HANDLE Device;
+		DWORD Type;
+	)"
+	
+	static STRUCT_RID_DEVICE_INFO_MOUSE := "
+	(
+		DWORD Id;
+		DWORD NumberOfButtons;
+		DWORD SampleRate;
+		BOOL HasHorizontalWheel;
+	)"
+	
+	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "
+	(
+		DWORD Type;
+		DWORD SubType;
+		DWORD KeyboardMode;
+		DWORD NumberOfFunctionKeys;
+		DWORD NumberOfIndicators;
+		DWORD NumberOfKeysTotal;
+	)"
+	
+	static STRUCT_RID_DEVICE_INFO_HID := "
+	(
+		DWORD VendorId;
+		DWORD ProductId;
+		DWORD VersionNumber;
+		USHORT UsagePage;
+		USHORT Usage;
+	)"
+	
+	static STRUCT_RID_DEVICE_INFO := "
+	(
+		DWORD Size;
+		DWORD Type;
+		{
+			struct {_CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse};
+			struct {_CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard};
+			struct {_CHID.STRUCT_RID_DEVICE_INFO_HID hid};
+		}
+	)"
+
 	__Get(aParam){
 		if (aParam = "DeviceList"){
 			return new this._CDeviceList(this)
@@ -166,8 +207,8 @@ Class _CHID {
 		}
 		if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {			; RawInputDeviceList contains a struct, not a number
-				RawInputDeviceList := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
-				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", RawInputDeviceList[], "UInt*", Size)
+				Data := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 			} else {
 				; No Struct passed in
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
