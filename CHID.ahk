@@ -19,6 +19,41 @@ Class _CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
+	__Get(aParam, bParam := ""){
+		if (aParam = "DeviceList"){
+			if (!ObjHasKey(this,"_DeviceList")){
+				; Create DeviceList object if it does not exist.
+				this._DeviceList := new this._CDeviceList(this)
+
+			}
+			return this._DeviceList
+		}
+	}
+	
+	; A class to wrap GetRawInputDeviceList calls.
+	; Properties:
+	; NumDevices			- The number of devices.
+	; [n] (Indexed Array)	- The RAWINPUTDEVICELIST structure for device n
+	Class _CDeviceList {
+		__New(root){
+			; Store link to main class containing DLL call funcs
+			this._root := root
+			
+		}
+		
+		__Get(aParam){
+			if (aParam = "NumDevices"){
+				; Querying number of devices
+				this.NumDevices := this._root.GetRawInputDeviceList()
+				return this.NumDevices
+			}
+			if (aParam is numeric){
+				; Querying specific device
+				
+			}
+		}
+	}
+	
 	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef NumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
