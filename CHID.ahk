@@ -8,6 +8,35 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
 #Include <_Struct>
 
+/*
+; ==================================================================================================================================================================================================
+; CODE TESTING AREA
+
+#singleinstance force
+#Include <CHID>
+
+Gui, Add, Listview, w785 h400 ,#|Type|VID|PID|UsagePage|Usage
+Gui, Show, w800 h600
+
+CHID := new _CHID()
+
+;NumDevices := CHID.GetRawInputDeviceList()
+;CHID.GetRawInputDeviceList(RAWINPUTDEVICELIST, NumDevices)
+
+; Use NumDevices straight away, class will automatically make the needed calls to discover value.
+Loop % CHID.DeviceList.NumDevices {
+	LV_Add(,A_INDEX, _CHID.RIM_TYPE[CHID.DeviceList.RAWINPUTDEVICELIST[A_Index].Type])
+}
+
+LV_Modifycol()
+return
+
+Esc::
+GuiClose:
+	ExitApp
+; ==================================================================================================================================================================================================
+*/
+
 Class _CHID {
 	static STRUCT_RAWINPUTDEVICELIST := "HANDLE Device; DWORD Type;"
 	
@@ -21,12 +50,7 @@ Class _CHID {
 	
 	__Get(aParam, bParam := ""){
 		if (aParam = "DeviceList"){
-			if (!ObjHasKey(this,"_DeviceList")){
-				; Create DeviceList object if it does not exist.
-				this._DeviceList := new this._CDeviceList(this)
-
-			}
-			return this._DeviceList
+			return new this._CDeviceList(this)
 		}
 	}
 	
@@ -41,15 +65,18 @@ Class _CHID {
 			
 		}
 		
-		__Get(aParam){
+		__Get(aParam, bParam := ""){
 			if (aParam = "NumDevices"){
 				; Querying number of devices
 				this.NumDevices := this._root.GetRawInputDeviceList()
 				return this.NumDevices
-			}
-			if (aParam is numeric){
-				; Querying specific device
-				
+			} else if (aParam = "RAWINPUTDEVICELIST"){
+				;if (!ObjHasKey(this, "_RAWINPUTDEVICELIST")){
+					this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
+					this.RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
+					; DO NOT return a value!
+					;return this.RAWINPUTDEVICELIST
+				;}
 			}
 		}
 	}
@@ -149,4 +176,5 @@ Class _CHID {
 		
 		return Size
 	}
+	
 }

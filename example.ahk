@@ -8,8 +8,10 @@ CHID := new _CHID()
 
 ; Use NumDevices straight away, class will automatically make the needed calls to discover value.
 Loop % CHID.DeviceList.NumDevices {
-	LV_Add(,A_INDEX, _CHID.RIM_TYPE[CHID.DeviceList[A_Index].Type])
+	dev := CHID.DeviceList.RAWINPUTDEVICELIST[A_Index]
+	LV_Add(,A_INDEX, _CHID.RIM_TYPE[dev.Type])
 }
+
 LV_Modifycol()
 return
 
