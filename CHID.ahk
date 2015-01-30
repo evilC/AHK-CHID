@@ -8,10 +8,8 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
 #Include <_Struct>
 
-/*
-; ==================================================================================================================================================================================================
-; CODE TESTING AREA
 
+; ==================================================================================================================================================================================================
 #singleinstance force
 #Include <CHID>
 
@@ -20,12 +18,10 @@ Gui, Show, w800 h600
 
 CHID := new _CHID()
 
-;NumDevices := CHID.GetRawInputDeviceList()
-;CHID.GetRawInputDeviceList(RAWINPUTDEVICELIST, NumDevices)
-
 ; Use NumDevices straight away, class will automatically make the needed calls to discover value.
 Loop % CHID.DeviceList.NumDevices {
-	LV_Add(,A_INDEX, _CHID.RIM_TYPE[CHID.DeviceList.RAWINPUTDEVICELIST[A_Index].Type])
+	dev := CHID.DeviceList.Device[A_Index]
+	LV_Add(,A_INDEX, _CHID.RIM_TYPE[dev.Type])
 }
 
 LV_Modifycol()
@@ -35,7 +31,7 @@ Esc::
 GuiClose:
 	ExitApp
 ; ==================================================================================================================================================================================================
-*/
+
 
 Class _CHID {
 	; Constants pulled from header files
@@ -47,8 +43,8 @@ Class _CHID {
 	; Structures
 	static STRUCT_RAWINPUTDEVICELIST := "
 	(
-		HANDLE Device;
-		DWORD Type;
+		HANDLE Device;//12345
+		DWORD Type;//123456789012345678901234
 	)"
 	
 	static STRUCT_RID_DEVICE_INFO_MOUSE := "
