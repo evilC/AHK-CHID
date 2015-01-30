@@ -43,11 +43,16 @@ Class _CHID {
 																	// RIM_TYPEMOUSE 		0 - The device is a mouse.
 		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;		
 		*/
-		if IsByRef(pRawInputDeviceList) {			; pRawInputDeviceList contains a struct, not a number
-			pRawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
-		}
 		; Perform the call
-		r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList?pRawInputDeviceList[]:0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+		if IsByRef(pRawInputDeviceList) {			; pRawInputDeviceList contains a struct, not a number
+			; Params passed - pull the device list.
+			pRawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
+			r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList[], "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+		} else {
+			; No Struct passed in, fill puiNumDevices with number of devices
+			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+		}
+		;r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList?pRawInputDeviceList[]:0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		
 		;Check for errors
 		if ((r = -1) Or ErrorLevel) {
@@ -88,7 +93,7 @@ Class _CHID {
 		if (uiCommand = -1){
 			uiCommand := RIDI_DEVICEINFO
 		}
-		r := DllCall("GetRawInputDeviceInfo", "Ptr", h, "UInt", uiCommand, "Ptr", 0, "UInt*", iLength)
+		r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1

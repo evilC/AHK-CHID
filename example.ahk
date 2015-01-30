@@ -1,12 +1,23 @@
 #singleinstance force
 #Include <CHID>
 
+Gui, Add, Listview, w785 h400 ,#|Type
+Gui, Show, w800 h600
+
+
 CHID := new _CHID()
 
-DevCount := CHID.GetRawInputDeviceList(DeviceList, CHID.GetRawInputDeviceList())
+DevCount := CHID.GetRawInputDeviceList()
+CHID.GetRawInputDeviceList(DeviceList, DevCount)
+
 Loop % DevCount {
-	s .= "#" A_Index " - Handle: " DeviceList[A_Index].hDevice ", Type: " _CHID.RIM_TYPE[DeviceList[A_Index].dwType] "`n"
+	LV_Add(,A_INDEX, _CHID.RIM_TYPE[DeviceList[A_Index].dwType])
+	;s .= "#" A_Index " - Handle: " DeviceList[A_Index].hDevice ", Type: " _CHID.RIM_TYPE[DeviceList[A_Index].dwType] "`n"
 }
 
-msgbox % s
+;msgbox % s
 return
+
+Esc::
+GuiClose:
+	ExitApp
