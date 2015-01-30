@@ -9,17 +9,17 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 #Include <_Struct>
 
 Class _CHID {
-	static STRUCT_RAWINPUTDEVICELIST := "HANDLE hDevice; DWORD  dwType"
+	static STRUCT_RAWINPUTDEVICELIST := "HANDLE Device; DWORD Type;"
 	
-	static STRUCT_RID_DEVICE_INFO := "DWORD cbSize; DWORD dwType; union { _CHID.STRUCT_RID_DEVICE_INFO_MOUSE  mouse; _CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard; _CHID.STRUCT_RID_DEVICE_INFO_HID hid; };"
-	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD dwId; DWORD dwNumberOfButtons; DWORD dwSampleRate; BOOL  fHasHorizontalWheel;"
-	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD dwType; DWORD dwSubType; DWORD dwKeyboardMode; DWORD dwNumberOfFunctionKeys; DWORD dwNumberOfIndicators; DWORD dwNumberOfKeysTotal;"
-	static STRUCT_RID_DEVICE_INFO_HID := "DWORD  dwVendorId, DWORD  dwProductId, DWORD  dwVersionNumber, USHORT usUsagePage, USHORT usUsage;"
+	static STRUCT_RID_DEVICE_INFO := "DWORD Size; DWORD Type; { _CHID.STRUCT_RID_DEVICE_INFO_MOUSE  mouse; _CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard; _CHID.STRUCT_RID_DEVICE_INFO_HID hid; };"
+	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD Id; DWORD NumberOfButtons; DWORD SampleRate; BOOL HasHorizontalWheel;"
+	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD Type; DWORD SubType; DWORD KeyboardMode; DWORD NumberOfFunctionKeys; DWORD NumberOfIndicators; DWORD NumberOfKeysTotal;"
+	static STRUCT_RID_DEVICE_INFO_HID := "DWORD VendorId, DWORD ProductId, DWORD VersionNumber, USHORT UsagePage, USHORT Usage;"
 
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
-	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0){
+	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef puiNumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -50,10 +50,10 @@ Class _CHID {
 		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;		
 		*/
 		; Perform the call
-		if IsByRef(pRawInputDeviceList) {			; pRawInputDeviceList contains a struct, not a number
+		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
 			; Params passed - pull the device list.
-			pRawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
-			r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList[], "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+			RawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
+			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		} else {
 			; No Struct passed in, fill puiNumDevices with number of devices
 			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
@@ -67,7 +67,7 @@ Class _CHID {
 	}
 	
 	; Not converted to _Struct yet
-	GetRawInputDeviceInfo(hDevice, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
+	GetRawInputDeviceInfo(Device, Command := -1, ByRef Data := 0, ByRef Size := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
 		
@@ -95,16 +95,16 @@ Class _CHID {
 		} RID_DEVICE_INFO, *PRID_DEVICE_INFO, *LPRID_DEVICE_INFO;
 		*/
 		
-		if (uiCommand = -1){
-			uiCommand := this.RIDI_DEVICEINFO
+		if (Command = -1){
+			Command := this.RIDI_DEVICEINFO
 		}
-		if (uiCommand = this.RIDI_DEVICEINFO){
-			if (pcbSize) {			; pRawInputDeviceList contains a struct, not a number
-				pRawInputDeviceList := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
-				r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pRawInputDeviceList[], "UInt*", pcbSize)
+		if (Command = this.RIDI_DEVICEINFO){
+			if (Size) {			; RawInputDeviceList contains a struct, not a number
+				RawInputDeviceList := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", RawInputDeviceList[], "UInt*", Size)
 			} else {
 				; No Struct passed in
-				r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
 			}
 		}
 		If (r = -1) Or ErrorLevel {
@@ -112,6 +112,6 @@ Class _CHID {
 			Return -1
 		}
 		
-		return pcbSize
+		return Size
 	}
 }

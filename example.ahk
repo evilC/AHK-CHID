@@ -11,11 +11,11 @@ DevCount := CHID.GetRawInputDeviceList()
 CHID.GetRawInputDeviceList(DeviceList, DevCount)
 
 Loop % DevCount {
-	if (DeviceList[A_Index].dwType = 2){
-		pcbSize := CHID.GetRawInputDeviceInfo(DeviceList[A_Index].hDevice, , pData, pcbSize)
-		CHID.GetRawInputDeviceInfo(DeviceList[A_Index].hDevice, , pData, pcbSize)
+	if (DeviceList[A_Index].Type = 2){
+		Size := CHID.GetRawInputDeviceInfo(DeviceList[A_Index].Device, , Data, Size)
+		CHID.GetRawInputDeviceInfo(DeviceList[A_Index].Device, , Data, Size)
 		
-		LV_Add(,A_INDEX, _CHID.RIM_TYPE[DeviceList[A_Index].dwType], pData.hid.dwVendorId)
+		LV_Add(,A_INDEX, _CHID.RIM_TYPE[DeviceList[A_Index].Type], Data.hid.VendorId)
 
 	}
 	;s .= "#" A_Index " - Handle: " DeviceList[A_Index].hDevice ", Type: " _CHID.RIM_TYPE[DeviceList[A_Index].dwType] "`n"
