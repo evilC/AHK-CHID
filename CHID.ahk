@@ -19,7 +19,7 @@ Class _CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
-	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef puiNumDevices := 0){
+	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef NumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -52,18 +52,18 @@ Class _CHID {
 		; Perform the call
 		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
 			; Params passed - pull the device list.
-			RawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" puiNumDevices "]")
-			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+			RawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" NumDevices "]")
+			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		} else {
-			; No Struct passed in, fill puiNumDevices with number of devices
-			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+			; No Struct passed in, fill NumDevices with number of devices
+			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		}
 		
 		;Check for errors
 		if ((r = -1) Or ErrorLevel) {
 			Return -1, ErrorLevel := "GetRawInputDeviceList call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
-		Return puiNumDevices
+		Return NumDevices
 	}
 	
 	; Not converted to _Struct yet
