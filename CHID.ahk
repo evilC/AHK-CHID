@@ -9,7 +9,13 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 #Include <_Struct>
 
 Class _CHID {
-	static STRUCT_RAWINPUTDEVICELIST := "HANDLE hDevice,DWORD  dwType"
+	static STRUCT_RAWINPUTDEVICELIST := "HANDLE hDevice; DWORD  dwType"
+	
+	static STRUCT_RID_DEVICE_INFO := "DWORD cbSize; DWORD dwType; union { _CHID.STRUCT_RID_DEVICE_INFO_MOUSE  mouse; _CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard; _CHID.STRUCT_RID_DEVICE_INFO_HID hid; };"
+	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD dwId; DWORD dwNumberOfButtons; DWORD dwSampleRate; BOOL  fHasHorizontalWheel;"
+	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD dwType; DWORD dwSubType; DWORD dwKeyboardMode; DWORD dwNumberOfFunctionKeys; DWORD dwNumberOfIndicators; DWORD dwNumberOfKeysTotal;"
+	static STRUCT_RID_DEVICE_INFO_HID := "DWORD  dwVendorId, DWORD  dwProductId, DWORD  dwVersionNumber, USHORT usUsagePage, USHORT usUsage;"
+
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	
@@ -52,7 +58,6 @@ Class _CHID {
 			; No Struct passed in, fill puiNumDevices with number of devices
 			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		}
-		;r := DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList?pRawInputDeviceList[]:0, "UInt*", puiNumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
 		
 		;Check for errors
 		if ((r = -1) Or ErrorLevel) {
@@ -91,13 +96,22 @@ Class _CHID {
 		*/
 		
 		if (uiCommand = -1){
-			uiCommand := RIDI_DEVICEINFO
+			uiCommand := this.RIDI_DEVICEINFO
 		}
-		r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
+		if (uiCommand = this.RIDI_DEVICEINFO){
+			if (pcbSize) {			; pRawInputDeviceList contains a struct, not a number
+				pRawInputDeviceList := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pRawInputDeviceList[], "UInt*", pcbSize)
+			} else {
+				; No Struct passed in
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
+			}
+		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}
-			
+		
+		return pcbSize
 	}
 }
