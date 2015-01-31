@@ -11,12 +11,12 @@
 Gui, Add, Listview, w785 h400 ,#|Type|VID|PID|UsagePage|Usage
 Gui, Show, w800 h600
 
-CHID := new _CHID()
+HID := new CHID_Helper()
 
 ; Use NumDevices straight away, class will automatically make the needed calls to discover value.
-Loop % CHID.DeviceList.NumDevices {
-	dev := CHID.DeviceList[A_Index]
-	LV_Add(,A_INDEX, _CHID.RIM_TYPE[dev.Type])
+Loop % HID.DeviceList.NumDevices {
+	dev := HID.DeviceList[A_Index]
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type])
 }
 
 LV_Modifycol()
@@ -27,8 +27,57 @@ GuiClose:
 	ExitApp
 ; ==================================================================================================================================================================================================
 
+; A set of helper classes to simplify the code required to get data via HID.
+; Makes use of meta-functions (ie __Get) to reduce the need for function calls, and reduce the burden on your code to decide which API calls to make and when.
+Class CHID_Helper Extends CHID {
+	__Get(aParam){
+		if (aParam = "DeviceList"){
+			this.DeviceList := new this._CDeviceList(this)
+		}
+	}
+	
+	; A class to wrap GetRawInputDeviceList calls.
+	; Properties:
+	; NumDevices			- The number of devices.
+	; [n] (Indexed Array)	- The RAWINPUTDEVICELIST structure for device n
+	
+	Class _CDeviceList {
+		__New(root){
+			; Store link to main class containing DLL call funcs
+			this._root := root
+			
+		}
+		
+		__Get(aParam){
+			if (aParam = "NumDevices"){
+				; Querying number of devices
+				this.NumDevices := this._root.GetRawInputDeviceList()
+			} else if (aParam is numeric){
+				if (!ObjHasKey(this, "_Device")){
+					this._Device := new this._root._CDevice(this._root)
+				}
+				return this._Device[aParam]
+			}
+		}
+	}
+	
+	Class _CDevice {
+		__New(root){
+			this._root := root
+			this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this._root.DeviceList.NumDevices)
+			this._RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
+		}
+		
+		__Get(aParam){
+			if (aParam is numeric){
+				return this._RAWINPUTDEVICELIST[aParam]
+			}
+		}
+	}
+}
 
-Class _CHID {
+; A base set of methods for interfacing with HID API calls using _Structs
+Class CHID {
 	; Constants pulled from header files
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	
@@ -77,56 +126,17 @@ Class _CHID {
 		DWORD Size;
 		DWORD Type;
 		{
-			struct {_CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse};
-			struct {_CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard};
-			struct {_CHID.STRUCT_RID_DEVICE_INFO_HID hid};
+			struct {CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse};
+			struct {CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard};
+			struct {CHID.STRUCT_RID_DEVICE_INFO_HID hid};
 		}
 	)"
+	
+	__New(){
+		; ToDo: Accelerate DLL calls in here by loading libs etc.
+		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
+	}
 
-	__Get(aParam){
-		if (aParam = "DeviceList"){
-			this.DeviceList := new this._CDeviceList(this)
-		}
-	}
-	
-	; A class to wrap GetRawInputDeviceList calls.
-	; Properties:
-	; NumDevices			- The number of devices.
-	; [n] (Indexed Array)	- The RAWINPUTDEVICELIST structure for device n
-	Class _CDeviceList {
-		__New(root){
-			; Store link to main class containing DLL call funcs
-			this._root := root
-			
-		}
-		
-		__Get(aParam){
-			if (aParam = "NumDevices"){
-				; Querying number of devices
-				this.NumDevices := this._root.GetRawInputDeviceList()
-			} else if (aParam is numeric){
-				if (!ObjHasKey(this, "_Device")){
-					this._Device := new this._root._CDevice(this._root)
-				}
-				return this._Device[aParam]
-			}
-		}
-	}
-	
-	Class _CDevice {
-		__New(root){
-			this._root := root
-			this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this._root.DeviceList.NumDevices)
-			this._RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
-		}
-		
-		__Get(aParam){
-			if (aParam is numeric){
-				return this._RAWINPUTDEVICELIST[aParam]
-			}
-		}
-	}
-	
 	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef NumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
@@ -144,11 +154,11 @@ Class _CHID {
 		; Perform the call
 		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
 			; Params passed - pull the device list.
-			RawInputDeviceList := new _Struct("_CHID.STRUCT_RAWINPUTDEVICELIST[" NumDevices "]")
-			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+			RawInputDeviceList := new _Struct("CHID.STRUCT_RAWINPUTDEVICELIST[" NumDevices "]")
+			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(CHID.STRUCT_RAWINPUTDEVICELIST) )
 		} else {
 			; No Struct passed in, fill NumDevices with number of devices
-			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(_CHID.STRUCT_RAWINPUTDEVICELIST) )
+			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(CHID.STRUCT_RAWINPUTDEVICELIST) )
 		}
 		
 		;Check for errors
@@ -181,7 +191,7 @@ Class _CHID {
 		}
 		if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {			; RawInputDeviceList contains a struct, not a number
-				Data := new _Struct("_CHID.STRUCT_RID_DEVICE_INFO")
+				Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO")
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 			} else {
 				; No Struct passed in
