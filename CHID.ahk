@@ -1,8 +1,3 @@
-/*
-All sizeof() comments are 32-bit sizes.
-A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps()
-*/
-
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
@@ -43,10 +38,13 @@ Class _CHID {
 	; Structures
 	static STRUCT_RAWINPUTDEVICELIST := "
 	(
-		HANDLE Device;
-		DWORD Type;
+		HANDLE Device;	// A handle to the raw input device.
+		DWORD Type;		// The type of device. This can be one of the following values
+						// RIM_TYPEHID 			2 - The device is an HID that is not a keyboard and not a mouse
+						// RIM_TYPEKEYBOARD 	1 - The device is a keyboard.
+						// RIM_TYPEMOUSE 		0 - The device is a mouse.
 	)"
-	
+
 	static STRUCT_RID_DEVICE_INFO_MOUSE := "
 	(
 		DWORD Id;
@@ -126,22 +124,6 @@ Class _CHID {
 																	// the function returns the actual number of devices in this variable and fails with ERROR_INSUFFICIENT_BUFFER.
 		  _In_       UINT cbSize									// The size of a RAWINPUTDEVICELIST structure, in bytes
 		);
-
-		struct tagRAWINPUTDEVICELIST {
-		  HANDLE hDevice;
-		  DWORD  dwType;
-		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
-
-		sizeof(RAWINPUTDEVICELIST) = 8
-		
-		RETURNS: An array of puiNumDevices STRUCTS:
-		typedef struct tagRAWINPUTDEVICELIST {
-		  HANDLE hDevice;											// A handle to the raw input device.
-		  DWORD  dwType;											// The type of device. This can be one of the following values
-																	// RIM_TYPEHID 			2 - The device is an HID that is not a keyboard and not a mouse
-																	// RIM_TYPEKEYBOARD 	1 - The device is a keyboard.
-																	// RIM_TYPEMOUSE 		0 - The device is a mouse.
-		} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;		
 		*/
 		; Perform the call
 		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
@@ -160,7 +142,6 @@ Class _CHID {
 		Return NumDevices
 	}
 	
-	; Not converted to _Struct yet
 	GetRawInputDeviceInfo(Device, Command := -1, ByRef Data := 0, ByRef Size := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
@@ -177,16 +158,6 @@ Class _CHID {
 											// If uiCommand is RIDI_DEVICEINFO, set the cbSize member of RID_DEVICE_INFO to sizeof(RID_DEVICE_INFO) before calling GetRawInputDeviceInfo.
 		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
 		);
-		
-		typedef struct tagRID_DEVICE_INFO {
-		  DWORD cbSize;
-		  DWORD dwType;
-		  union {
-			RID_DEVICE_INFO_MOUSE    mouse;
-			RID_DEVICE_INFO_KEYBOARD keyboard;
-			RID_DEVICE_INFO_HID      hid;
-		  };
-		} RID_DEVICE_INFO, *PRID_DEVICE_INFO, *LPRID_DEVICE_INFO;
 		*/
 		
 		if (Command = -1){
