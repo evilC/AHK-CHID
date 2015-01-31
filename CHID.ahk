@@ -15,8 +15,7 @@ CHID := new _CHID()
 
 ; Use NumDevices straight away, class will automatically make the needed calls to discover value.
 Loop % CHID.DeviceList.NumDevices {
-	dev := CHID.DeviceList.Device[A_Index]
-	LV_Add(,A_INDEX, _CHID.RIM_TYPE[dev.Type])
+	LV_Add(,A_INDEX, _CHID.RIM_TYPE[CHID.DeviceList[A_Index].Type])
 }
 
 LV_Modifycol()
@@ -104,9 +103,12 @@ Class _CHID {
 			if (aParam = "NumDevices"){
 				; Querying number of devices
 				this.NumDevices := this._root.GetRawInputDeviceList()
-			} else if (aParam = "Device"){
-				this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
-				this.Device := RAWINPUTDEVICELIST
+			} else if (aParam is numeric){
+				if (!ObjHasKey(this, "_Device")){
+					this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
+					this._Device := RAWINPUTDEVICELIST
+				}
+				return this._Device[aParam]
 			}
 		}
 	}
