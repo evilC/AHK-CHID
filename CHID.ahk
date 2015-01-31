@@ -8,10 +8,10 @@ A_PtrSize for x86 is 4, so divide all sizeof() results by 4, feed result into ps
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
 #Include <_Struct>
 
-
 ; ==================================================================================================================================================================================================
+; TEST CODE
 #singleinstance force
-#Include <CHID>
+;#Include <CHID>
 
 Gui, Add, Listview, w785 h400 ,#|Type|VID|PID|UsagePage|Usage
 Gui, Show, w800 h600
