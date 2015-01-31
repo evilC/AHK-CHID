@@ -43,8 +43,8 @@ Class _CHID {
 	; Structures
 	static STRUCT_RAWINPUTDEVICELIST := "
 	(
-		HANDLE Device;//12345
-		DWORD Type;//123456789012345678901234
+		HANDLE Device;
+		DWORD Type;
 	)"
 	
 	static STRUCT_RID_DEVICE_INFO_MOUSE := "
@@ -87,7 +87,7 @@ Class _CHID {
 
 	__Get(aParam){
 		if (aParam = "DeviceList"){
-			return new this._CDeviceList(this)
+			this.DeviceList := new this._CDeviceList(this)
 		}
 	}
 	
@@ -102,22 +102,13 @@ Class _CHID {
 			
 		}
 		
-		_Call(aTarget, aName, aParams*){
-			msgbox HERE
-		}
-		
 		__Get(aParam){
 			if (aParam = "NumDevices"){
 				; Querying number of devices
 				this.NumDevices := this._root.GetRawInputDeviceList()
-				return this.NumDevices
 			} else if (aParam = "Device"){
-				;if (!ObjHasKey(this, "_RAWINPUTDEVICELIST")){
-					this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
-					this.Device := RAWINPUTDEVICELIST
-					; DO NOT return a value!
-					;return this.Device
-				;}
+				this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this.NumDevices)
+				this.Device := RAWINPUTDEVICELIST
 			}
 		}
 	}
