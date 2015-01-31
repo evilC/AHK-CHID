@@ -5,76 +5,7 @@
 
 ; ==================================================================================================================================================================================================
 ; TEST CODE
-#singleinstance force
-;#Include <CHID>
-
-Gui, Add, Listview, w785 h400 ,#|Type|VID|PID|UsagePage|Usage
-Gui, Show, w800 h600
-
-HID := new CHID_Helper()
-
-; Use NumDevices straight away, class will automatically make the needed calls to discover value.
-Loop % HID.DeviceList.NumDevices {
-	dev := HID.DeviceList[A_Index]
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type])
-}
-
-LV_Modifycol()
-return
-
-Esc::
-GuiClose:
-	ExitApp
 ; ==================================================================================================================================================================================================
-
-; A set of helper classes to simplify the code required to get data via HID.
-; Makes use of meta-functions (ie __Get) to reduce the need for function calls, and reduce the burden on your code to decide which API calls to make and when.
-Class CHID_Helper Extends CHID {
-	__Get(aParam){
-		if (aParam = "DeviceList"){
-			this.DeviceList := new this._CDeviceList(this)
-		}
-	}
-	
-	; A class to wrap GetRawInputDeviceList calls.
-	; Properties:
-	; NumDevices			- The number of devices.
-	; [n] (Indexed Array)	- The RAWINPUTDEVICELIST structure for device n
-	
-	Class _CDeviceList {
-		__New(root){
-			; Store link to main class containing DLL call funcs
-			this._root := root
-			
-		}
-		
-		__Get(aParam){
-			if (aParam = "NumDevices"){
-				; Querying number of devices
-				this.NumDevices := this._root.GetRawInputDeviceList()
-			} else if (aParam is numeric){
-				if (!ObjHasKey(this, "_Device")){
-					this._Device := new this._root._CDevice(this._root)
-				}
-				return this._Device[aParam]
-			}
-		}
-	}
-	
-	Class _CDevice {
-		__New(root){
-			this._root := root
-			this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this._root.DeviceList.NumDevices)
-			this._RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
-		}
-		
-		__Get(aParam){
-			if (aParam is numeric){
-				return this._RAWINPUTDEVICELIST[aParam]
-			}
-		}
-	}
-}
 
 ; A base set of methods for interfacing with HID API calls using _Structs
 Class CHID {
@@ -94,6 +25,9 @@ Class CHID {
 						// RIM_TYPEMOUSE 		0 - The device is a mouse.
 	)"
 
+	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD Id; DWORD NumberOfButtons; DWORD SampleRate; BOOL HasHorizontalWheel;"
+	
+	/*
 	static STRUCT_RID_DEVICE_INFO_MOUSE := "
 	(
 		DWORD Id;
@@ -101,7 +35,11 @@ Class CHID {
 		DWORD SampleRate;
 		BOOL HasHorizontalWheel;
 	)"
+	*/
 	
+	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD Type; DWORD SubType; DWORD KeyboardMode; DWORD NumberOfFunctionKeys; DWORD NumberOfIndicators; DWORD NumberOfKeysTotal;"
+	
+	/*
 	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "
 	(
 		DWORD Type;
@@ -111,7 +49,10 @@ Class CHID {
 		DWORD NumberOfIndicators;
 		DWORD NumberOfKeysTotal;
 	)"
+	*/
 	
+	static STRUCT_RID_DEVICE_INFO_HID := "DWORD VendorId; DWORD ProductId; DWORD VersionNumber; USHORT UsagePage; USHORT Usage; "
+	/*
 	static STRUCT_RID_DEVICE_INFO_HID := "
 	(
 		DWORD VendorId;
@@ -120,7 +61,10 @@ Class CHID {
 		USHORT UsagePage;
 		USHORT Usage;
 	)"
-	
+	*/
+	static STRUCT_RID_DEVICE_INFO := "DWORD Size; DWORD Type; {	struct {CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse}; struct {CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard}; struct {CHID.STRUCT_RID_DEVICE_INFO_HID hid};	}"
+
+	/*
 	static STRUCT_RID_DEVICE_INFO := "
 	(
 		DWORD Size;
@@ -131,7 +75,7 @@ Class CHID {
 			struct {CHID.STRUCT_RID_DEVICE_INFO_HID hid};
 		}
 	)"
-	
+	*/
 	__New(){
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
 		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
