@@ -3,10 +3,6 @@
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
 #Include <_Struct>
 
-; ==================================================================================================================================================================================================
-; TEST CODE
-; ==================================================================================================================================================================================================
-
 ; A base set of methods for interfacing with HID API calls using _Structs
 Class CHID {
 	; Constants pulled from header files
@@ -25,9 +21,6 @@ Class CHID {
 						// RIM_TYPEMOUSE 		0 - The device is a mouse.
 	)"
 
-	static STRUCT_RID_DEVICE_INFO_MOUSE := "DWORD Id; DWORD NumberOfButtons; DWORD SampleRate; BOOL HasHorizontalWheel;"
-	
-	/*
 	static STRUCT_RID_DEVICE_INFO_MOUSE := "
 	(
 		DWORD Id;
@@ -35,11 +28,7 @@ Class CHID {
 		DWORD SampleRate;
 		BOOL HasHorizontalWheel;
 	)"
-	*/
 	
-	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "DWORD Type; DWORD SubType; DWORD KeyboardMode; DWORD NumberOfFunctionKeys; DWORD NumberOfIndicators; DWORD NumberOfKeysTotal;"
-	
-	/*
 	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "
 	(
 		DWORD Type;
@@ -49,10 +38,7 @@ Class CHID {
 		DWORD NumberOfIndicators;
 		DWORD NumberOfKeysTotal;
 	)"
-	*/
 	
-	static STRUCT_RID_DEVICE_INFO_HID := "DWORD VendorId; DWORD ProductId; DWORD VersionNumber; USHORT UsagePage; USHORT Usage; "
-	/*
 	static STRUCT_RID_DEVICE_INFO_HID := "
 	(
 		DWORD VendorId;
@@ -61,21 +47,18 @@ Class CHID {
 		USHORT UsagePage;
 		USHORT Usage;
 	)"
-	*/
-	static STRUCT_RID_DEVICE_INFO := "DWORD Size; DWORD Type; {	struct {CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse}; struct {CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard}; struct {CHID.STRUCT_RID_DEVICE_INFO_HID hid};	}"
 
-	/*
 	static STRUCT_RID_DEVICE_INFO := "
 	(
 		DWORD Size;
 		DWORD Type;
 		{
-			struct {CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse};
-			struct {CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard};
-			struct {CHID.STRUCT_RID_DEVICE_INFO_HID hid};
+			CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse;
+			CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard;
+			CHID.STRUCT_RID_DEVICE_INFO_HID hid;
 		}
 	)"
-	*/
+	
 	__New(){
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
 		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
@@ -134,9 +117,9 @@ Class CHID {
 			Command := this.RIDI_DEVICEINFO
 		}
 		if (Command = this.RIDI_DEVICEINFO){
-			if (Size) {			; RawInputDeviceList contains a struct, not a number
-				Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO")
-				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
+			if (Size) {   ; RawInputDeviceList contains a struct, not a number
+			  Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO",{size:Size})
+			  r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 			} else {
 				; No Struct passed in
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)

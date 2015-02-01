@@ -1,3 +1,4 @@
+#Include <_Struct>
 #singleinstance force
 #Include CHID.ahk
 
@@ -7,17 +8,13 @@ Gui, Show, w800 h600
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
-
-handle := DeviceList[1].Device
-DevSize := HID.GetRawInputDeviceInfo(handle)
-HID.GetRawInputDeviceInfo(handle, ,Data, DevSize)
-
-;msgbox % Data.Type
-
+DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].Device)
 
 Loop % NumDevices {
 	dev := DeviceList[A_Index]
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type])
+	handle := DeviceList[A_Index].Device
+	HID.GetRawInputDeviceInfo(handle, ,Data, DevSize)
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage )
 }
 
 LV_Modifycol()

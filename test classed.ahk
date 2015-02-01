@@ -11,6 +11,7 @@ HID := new CHID_Helper()
 Loop % HID.DeviceList.NumDevices {
 	dev := HID.DeviceList[A_Index]
 	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type])
+	;LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], dev.Info.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage )
 }
 LV_Modifycol()
 return

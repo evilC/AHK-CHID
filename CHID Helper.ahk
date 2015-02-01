@@ -5,6 +5,8 @@ Class CHID_Helper Extends CHID {
 	__Get(aParam){
 		if (aParam = "DeviceList"){
 			this.DeviceList := new this._CDeviceList(this)
+		} else if (aParam = "DeviceInfo"){
+			this.DeviceList := new this._CDeviceInfo(this)
 		}
 	}
 	
@@ -26,26 +28,37 @@ Class CHID_Helper Extends CHID {
 				this.NumDevices := this._root.GetRawInputDeviceList()
 			} else if (aParam is numeric){
 				if (!ObjHasKey(this, "_Device")){
-					this._Device := new this._root._CDevice(this._root)
+					this._Device := new this._CDevice(this._root)
 				}
 				return this._Device[aParam]
 			}
 		}
+		
+		Class _CDevice {
+			__New(root){
+				this._root := root
+				this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this._root.DeviceList.NumDevices)
+				this._RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
+			}
+			
+			__Get(aParam){
+				if (aParam is numeric){
+					return this._RAWINPUTDEVICELIST[aParam]
+				}
+			}
+		}
 	}
 	
-	Class _CDevice {
+	Class _CDeviceInfo {
 		__New(root){
 			this._root := root
-			this._root.GetRawInputDeviceList(RAWINPUTDEVICELIST, this._root.DeviceList.NumDevices)
-			this._RAWINPUTDEVICELIST := RAWINPUTDEVICELIST
 		}
 		
 		__Get(aParam){
 			if (aParam = "Info"){
 				
-			} else if (aParam is numeric){
-				return this._RAWINPUTDEVICELIST[aParam]
 			}
 		}
 	}
+	
 }
