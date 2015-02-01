@@ -152,6 +152,7 @@ Class CHID {
 			}
 		;}
 		If (r = -1) Or ErrorLevel {
+			soundbeep
 			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}
@@ -159,7 +160,7 @@ Class CHID {
 		return Size
 	}
 	
-	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
+	HidP_GetCaps(PreparsedData, ByRef Capabilities){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
 		
@@ -171,6 +172,7 @@ Class CHID {
 		Capabilities := new _Struct("CHID.STRUCT_HIDP_CAPS")
 		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
 		If (r = -1) Or ErrorLevel {
+			soundbeep
 			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}

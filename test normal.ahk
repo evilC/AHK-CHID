@@ -27,9 +27,9 @@ Loop % NumDevices {
 	Regread, human_name, HKLM, % key, OEMName
     
     ; Decode capabilities
-    ppSize := HID.GetRawInputDeviceInfo(DeviceList[A_Index].Device, HID.RIDI_PREPARSEDDATA)
-    ret := HID.GetRawInputDeviceInfo(DeviceList[A_Index].Device, HID.RIDI_PREPARSEDDATA, ppData, ppSize)
-    ret := HID.HidP_GetCaps(ppData, Caps)
+    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+    ret := HID.HidP_GetCaps(PreparsedData, Caps)
     
     ; Update LV
 	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, Caps.NumberInputButtonCaps )
