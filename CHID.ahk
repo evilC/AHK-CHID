@@ -77,7 +77,7 @@ Class CHID {
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 				} else if (Command = this.RIDI_PREPARSEDDATA){
 					VarSetCapacity(Data, Size)
-					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
+					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", &Data, "UInt*", Size)
 				}
 			} else {
 				; No Struct passed in
@@ -93,7 +93,7 @@ Class CHID {
 		return Size
 	}
 	
-	HidP_GetCaps(PreparsedData, ByRef Capabilities){
+	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
 		
@@ -107,6 +107,27 @@ Class CHID {
 		If (r = -1) Or ErrorLevel {
 			soundbeep
 			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			Return -1
+		}
+		return r
+	}
+	
+	HidP_GetButtonCaps(ReportType, ByRef ButtonCaps, ByRef ButtonCapsLength, ByRef PreparsedData){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539707(v=vs.85).aspx
+		
+		NTSTATUS __stdcall HidP_GetButtonCaps(
+		  _In_     HIDP_REPORT_TYPE ReportType,
+		  _Out_    PHIDP_BUTTON_CAPS ButtonCaps,
+		  _Inout_  PUSHORT ButtonCapsLength,
+		  _In_     PHIDP_PREPARSED_DATA PreparsedData
+		);
+		*/
+		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
+		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "Ptr" &ButtonCapsLength, "Ptr", &PreparsedData)
+		If (r = -1) Or ErrorLevel {
+			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			msgbox % Errorlevel
 			Return -1
 		}
 		return r

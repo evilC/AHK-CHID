@@ -30,9 +30,11 @@ Loop % NumDevices {
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+    btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
     
     ; Update LV
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, Caps.NumberInputButtonCaps )
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
 }
 
 LV_Modifycol()
