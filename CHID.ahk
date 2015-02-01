@@ -1,7 +1,9 @@
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
+; WinStructs: https://github.com/ahkscript/WinStructs
 #Include <_Struct>
+#Include <WinStructs>
 
 ; A base set of methods for interfacing with HID API calls using _Structs
 Class CHID {
@@ -10,75 +12,6 @@ Class CHID {
 	
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
-
-	; Structures
-	static STRUCT_RAWINPUTDEVICELIST := "
-	(
-		HANDLE Device;	// A handle to the raw input device.
-		DWORD Type;		// The type of device. This can be one of the following values
-						// RIM_TYPEHID 			2 - The device is an HID that is not a keyboard and not a mouse
-						// RIM_TYPEKEYBOARD 	1 - The device is a keyboard.
-						// RIM_TYPEMOUSE 		0 - The device is a mouse.
-	)"
-
-	static STRUCT_RID_DEVICE_INFO_MOUSE := "
-	(
-		DWORD Id;
-		DWORD NumberOfButtons;
-		DWORD SampleRate;
-		BOOL HasHorizontalWheel;
-	)"
-	
-	static STRUCT_RID_DEVICE_INFO_KEYBOARD := "
-	(
-		DWORD Type;
-		DWORD SubType;
-		DWORD KeyboardMode;
-		DWORD NumberOfFunctionKeys;
-		DWORD NumberOfIndicators;
-		DWORD NumberOfKeysTotal;
-	)"
-	
-	static STRUCT_RID_DEVICE_INFO_HID := "
-	(
-		DWORD VendorId;
-		DWORD ProductId;
-		DWORD VersionNumber;
-		USHORT UsagePage;
-		USHORT Usage;
-	)"
-
-	static STRUCT_RID_DEVICE_INFO := "
-	(
-		DWORD Size;
-		DWORD Type;
-		{
-			CHID.STRUCT_RID_DEVICE_INFO_MOUSE mouse;
-			CHID.STRUCT_RID_DEVICE_INFO_KEYBOARD keyboard;
-			CHID.STRUCT_RID_DEVICE_INFO_HID hid;
-		}
-	)"
-	
-	;https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
-	static STRUCT_HIDP_CAPS := "
-	(
-		USHORT Usage;
-		USHORT UsagePage;
-		USHORT InputReportByteLength;
-		USHORT OutputReportByteLength;
-		USHORT FeatureReportByteLength;
-		USHORT Reserved[17];
-		USHORT NumberLinkCollectionNodes;
-		USHORT NumberInputButtonCaps;
-		USHORT NumberInputValueCaps;
-		USHORT NumberInputDataIndices;
-		USHORT NumberOutputButtonCaps;
-		USHORT NumberOutputValueCaps;
-		USHORT NumberOutputDataIndices;
-		USHORT NumberFeatureButtonCaps;
-		USHORT NumberFeatureValueCaps;
-		USHORT NumberFeatureDataIndices;
-	)"
 
 	__New(){
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
@@ -102,11 +35,11 @@ Class CHID {
 		; Perform the call
 		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
 			; Params passed - pull the device list.
-			RawInputDeviceList := new _Struct("CHID.STRUCT_RAWINPUTDEVICELIST[" NumDevices "]")
-			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(CHID.STRUCT_RAWINPUTDEVICELIST) )
+			RawInputDeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
+			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICELIST) )
 		} else {
 			; No Struct passed in, fill NumDevices with number of devices
-			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(CHID.STRUCT_RAWINPUTDEVICELIST) )
+			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICELIST) )
 		}
 		
 		;Check for errors
@@ -140,7 +73,7 @@ Class CHID {
 		;if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {   ; RawInputDeviceList contains a struct, not a number
 				if (Command = this.RIDI_DEVICEINFO){
-					Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO",{size:Size})
+					Data := new _Struct("WinStructs.RID_DEVICE_INFO",{size:Size})
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 				} else if (Command = this.RIDI_PREPARSEDDATA){
 					VarSetCapacity(Data, Size)
@@ -169,7 +102,7 @@ Class CHID {
 		  _Out_  PHIDP_CAPS Capabilities
 		);
 		*/
-		Capabilities := new _Struct("CHID.STRUCT_HIDP_CAPS")
+		Capabilities := new _Struct("WinStructs.HIDP_CAPS")
 		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
 		If (r = -1) Or ErrorLevel {
 			soundbeep
