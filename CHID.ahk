@@ -171,7 +171,6 @@ Class CHID {
 		Capabilities := new _Struct("CHID.STRUCT_HIDP_CAPS")
 		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
 		If (r = -1) Or ErrorLevel {
-			soundbeep
 			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}
