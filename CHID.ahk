@@ -59,6 +59,27 @@ Class CHID {
 		}
 	)"
 	
+	;https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
+	static STRUCT_HIDP_CAPS := "
+	(
+		USHORT Usage;
+		USHORT UsagePage;
+		USHORT InputReportByteLength;
+		USHORT OutputReportByteLength;
+		USHORT FeatureReportByteLength;
+		USHORT Reserved[17];
+		USHORT NumberLinkCollectionNodes;
+		USHORT NumberInputButtonCaps;
+		USHORT NumberInputValueCaps;
+		USHORT NumberInputDataIndices;
+		USHORT NumberOutputButtonCaps;
+		USHORT NumberOutputValueCaps;
+		USHORT NumberOutputDataIndices;
+		USHORT NumberFeatureButtonCaps;
+		USHORT NumberFeatureValueCaps;
+		USHORT NumberFeatureDataIndices;
+	)"
+
 	__New(){
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
 		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
@@ -116,15 +137,20 @@ Class CHID {
 		if (Command = -1){
 			Command := this.RIDI_DEVICEINFO
 		}
-		if (Command = this.RIDI_DEVICEINFO){
+		;if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {   ; RawInputDeviceList contains a struct, not a number
-			  Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO",{size:Size})
-			  r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
+				if (Command = this.RIDI_DEVICEINFO){
+					Data := new _Struct("CHID.STRUCT_RID_DEVICE_INFO",{size:Size})
+					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
+				} else if (Command = this.RIDI_PREPARSEDDATA){
+					VarSetCapacity(Data, Size)
+					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
+				}
 			} else {
 				; No Struct passed in
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
 			}
-		}
+		;}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
@@ -133,4 +159,22 @@ Class CHID {
 		return Size
 	}
 	
+	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
+		
+		NTSTATUS __stdcall HidP_GetCaps(
+		  _In_   PHIDP_PREPARSED_DATA PreparsedData,
+		  _Out_  PHIDP_CAPS Capabilities
+		);
+		*/
+		Capabilities := new _Struct("CHID.STRUCT_HIDP_CAPS")
+		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
+		If (r = -1) Or ErrorLevel {
+			soundbeep
+			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			Return -1
+		}
+		return r
+	}
 }
