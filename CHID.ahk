@@ -124,7 +124,7 @@ Class CHID {
 		);
 		*/
 		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
-		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "Ptr" &ButtonCapsLength, "Ptr", &PreparsedData)
+		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*" &ButtonCapsLength, "Ptr", &PreparsedData)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
