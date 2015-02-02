@@ -1,8 +1,23 @@
 #SingleInstance force
+global II_DEVTYPE          := 0    ;Type of the device generating the raw input data. See RIM_ constants.
+global II_DEVHANDLE        := 8    ;Handle to the device generating the raw input data.
+
+global RIM_TYPEMOUSE       := 0    ;The device is a mouse.
+global RIM_TYPEKEYBOARD    := 1    ;The device is a keyboard.
+global RIM_TYPEHID         := 2    ;The device is an Human Interface Device (HID) that is not a keyboard and not a mouse.
+
+global DI_HID_VENDORID             := 8    ;Vendor ID for the HID.
+global DI_HID_PRODUCTID            := 12   ;Product ID for the HID. 
+global DI_HID_VERSIONNUMBER        := 16   ;Version number for the HID. 
+global DI_HID_USAGEPAGE            := 20 | 0x0100  ;Top-level collection Usage Page for the device.
+global DI_HID_USAGE                := 22 | 0x0100  ;Top-level collection Usage for the device.
+
+#Include <WinStructs>
 
 ;Create GUI
 Gui +LastFound -Resize -MaximizeBox -MinimizeBox
-Gui, Add, ListBox, x6 ym w650 h320 vlbxInput hwndhlbxInput,
+Gui, Add, ListBox, x6 ym w650 h320 vlbxInput hwndHwnd,
+global hlbxInput := Hwnd
 
 ;Keep handle
 GuiHandle := A_ScriptHwnd
@@ -24,30 +39,13 @@ GuiClose:
 ExitApp
 
 InputMsg(wParam, lParam) {
-    Local r, h
     Critical    ;Or otherwise you could get ERROR_INVALID_HANDLE
     
     ;Get device type
     r := AHKHID_GetInputInfo(lParam, II_DEVTYPE) 
     If (r = -1)
         OutputDebug %ErrorLevel%
-    If (r = RIM_TYPEMOUSE) {
-        GuiControl,, lbxInput, % ""
-        . " Flags: "       AHKHID_GetInputInfo(lParam, II_MSE_FLAGS) 
-        . " ButtonFlags: " AHKHID_GetInputInfo(lParam, II_MSE_BUTTONFLAGS) 
-        . " ButtonData: "  AHKHID_GetInputInfo(lParam, II_MSE_BUTTONDATA) 
-        . " RawButtons: "  AHKHID_GetInputInfo(lParam, II_MSE_RAWBUTTONS) 
-        . " LastX: "       AHKHID_GetInputInfo(lParam, II_MSE_LASTX)
-        . " LastY: "       AHKHID_GetInputInfo(lParam, II_MSE_LASTY) 
-        . " ExtraInfo: "   AHKHID_GetInputInfo(lParam, II_MSE_EXTRAINFO)
-    } Else If (r = RIM_TYPEKEYBOARD) {
-        GuiControl,, lbxInput, % ""
-        . " MakeCode: "    AHKHID_GetInputInfo(lParam, II_KBD_MAKECODE)
-        . " Flags: "       AHKHID_GetInputInfo(lParam, II_KBD_FLAGS)
-        . " VKey: "        AHKHID_GetInputInfo(lParam, II_KBD_VKEY)
-        . " Message: "     AHKHID_GetInputInfo(lParam, II_KBD_MSG) 
-        . " ExtraInfo: "   AHKHID_GetInputInfo(lParam, II_KBD_EXTRAINFO)
-    } Else If (r = RIM_TYPEHID) {
+    If (r = RIM_TYPEHID) {
         h := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
         r := AHKHID_GetInputData(lParam, uData)
 		vid := AHKHID_GetDevInfo(h, DI_HID_VENDORID,     True)
