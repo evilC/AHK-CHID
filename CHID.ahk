@@ -9,6 +9,8 @@
 Class CHID {
 	; Constants pulled from header files
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
+	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
 	
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
@@ -17,7 +19,29 @@ Class CHID {
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
 		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
 	}
-
+	
+	
+	RegisterRawInputDevices(ByRef RawInputDevices, NumDevices, Size := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
+		
+		BOOL WINAPI RegisterRawInputDevices(
+		  _In_  PCRAWINPUTDEVICE pRawInputDevices,
+		  _In_  UINT uiNumDevices,
+		  _In_  UINT cbSize
+		);		
+		*/
+		
+		r := DllCall("RegisterRawInputDevices", "Ptr", RawInputDevices[], "UInt", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICE) )
+		;Check for errors
+		if ((r = -1) Or ErrorLevel) {
+			ErrorLevel := "GetRawInputDeviceList call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
+			msgbox % "EL: " ErrorLevel
+			Return -1
+		}
+		return r
+	}
+	
 	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef NumDevices := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
@@ -89,8 +113,67 @@ Class CHID {
 			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}
-		
 		return Size
+	}
+	
+	GetRawInputData(RawInput, Command := -1, ByRef Data := 0, ByRef Size := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
+		
+		UINT WINAPI GetRawInputData(
+		  _In_       HRAWINPUT hRawInput,
+		  _In_       UINT uiCommand,
+		  _Out_opt_  LPVOID pData,
+		  _Inout_    PUINT pcbSize,
+		  _In_       UINT cbSizeHeader
+		);		
+		*/
+		;RawInput := new _Struct(WinStructs.RAWINPUT,,lParam)
+		static SizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
+		
+		if (Command = -1){
+			Command := this.RID_INPUT
+		}
+		if (RawInput){
+			
+		}
+		if (Size){
+			;Data := new _Struct(Winstructs.RAWINPUT)
+			;msgbox % "Size: " Size ", sizeof: " sizeof(Data)
+			;Size := sizeof(Data)
+			;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", Size, "Uint", SizeHeader )
+			;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", sizeof(Data), "Uint", SizeHeader )
+			VarSetCapacity(Data, Size)
+			d := new  _Struct(Winstructs.RAWINPUTDEVICE)
+			msgbox % "SIZE: " Size ", sizeof: " d.Size()
+			r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", &Data, "UInt*", Size, "Uint", SizeHeader )
+			Flag := 0
+			
+			t :=  AHKHID_NumIsShort(Flag) ? (AHKHID_NumIsSigned(Flag) ? "Short" : "UShort") : (AHKHID_NumIsSigned(Flag) ? "Int" : (Flag = 8 ? "Ptr" : "UInt"))
+			;v := NumGet(Data, Flag, t)
+			v := NumGet(Data, 16, t)
+			return v
+			;Data := new _Struct(WinStructs.RAWINPUT,,Data)
+		} else {
+			r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", 0, "UInt*", Size, "Uint", SizeHeader )
+		}
+		;SizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
+		;d := new _Struct(Winstructs.RAWINPUT)
+		;s := sizeof(d)
+		;Data := new _Struct(Winstructs.RAWINPUT)
+		;Size := sizeof(Data)
+		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", &Size, "Uint", SizeHeader )
+		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data, "UInt*", 0, "Uint", SizeHeader )
+		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data, "UInt*", 0, "Uint", SizeHeader )
+		;Data := d
+		;Data := new _Struct(Winstructs.RAWINPUT,,Data)
+		If (r = -1) Or ErrorLevel {
+			ErrorLevel = GetRawInputDeviceInfo call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			msgbox % ErrorLevel ", " RawInput
+			Return -1
+		}
+		r := Size
+		return r
 	}
 	
 	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
@@ -124,7 +207,8 @@ Class CHID {
 		);
 		*/
 		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
-		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*" &ButtonCapsLength, "Ptr", &PreparsedData)
+		;r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", &ButtonCapsLength, "Ptr", &PreparsedData)
+		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = HidP_GetCaps call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel

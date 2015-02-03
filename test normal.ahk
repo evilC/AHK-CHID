@@ -3,13 +3,15 @@
 #Include CHID.ahk
 
 Gui +Resize -MaximizeBox -MinimizeBox
-Gui, Add, Listview, w400 h300 vlvDL,#|Type|VID|PID|UsagePage|Usage|Name|Buttons
+Gui, Add, Listview, w400 h300 vlvDL gSelectDevice AltSubmit,#|Type|Handle|VID|PID|UsagePage|Usage|Name|Buttons
 Gui, Show
 
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
 DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].Device)
+
+DevData := []
 
 Loop % NumDevices {
     ; Get device Handle
@@ -21,6 +23,7 @@ Loop % NumDevices {
     
     ; Get Device Info
 	HID.GetRawInputDeviceInfo(handle, ,Data, DevSize)
+    DevData[A_Index] := Data
     
     ; Find Human name from registry
 	key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" Format("{:04x}", Data.hid.VendorID) "&PID_" Format("{:04x}", Data.hid.ProductID)
@@ -32,13 +35,47 @@ Loop % NumDevices {
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
     HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
     btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
+    ;btns := pButtonCaps.Range.UsageMax - pButtonCaps.Range.UsageMin + 1
     
     ; Update LV
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], handle, Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
 }
 
 LV_Modifycol()
 return
+
+InputMsg(wParam, lParam) {
+    global HID
+    
+    r := HID.GetRawInputData(lParam,,Data)
+    msgbox % A_ThisFunc ": " r
+    if (r > 0){
+        tooltip % Data.hid.UsagePage
+    }
+    ;ri := new _Struct(WinStructs.RAWINPUT,,lParam)
+    ;if (ri.header.Type = 2){
+        ;tooltip % ri.header.Device
+        ;tooltip % Data.hid.UsagePage
+    ;}
+}
+
+SelectDevice:
+    LV_GetText(s, LV_GetNext())
+    if (A_GuiEvent = "i" && s > 0){
+        ; Register Device
+        handle := DeviceList[s].Device
+        rid := new _struct(WinStructs.RAWINPUTDEVICE)
+        rid.UsagePage := DevData[s].hid.UsagePage
+        rid.Usage := DevData[s].hid.Usage
+        rid.Target := A_ScriptHwnd
+        ;rid.Flags := HID.RIDEV_INPUTSINK
+        rid.Flags := 0
+        
+        ret := HID.RegisterRawInputDevices(rid, 1)
+        OnMessage(0x00FF, "InputMsg")
+        ;msgbox % ret
+    }
+    return
 
 GuiSize:
     Anchor("lvDL", "wh")
