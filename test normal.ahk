@@ -26,7 +26,7 @@ Loop % NumDevices {
     DevData[A_Index] := Data
     
     ; Find Human name from registry
-	key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" Format("{:04x}", Data.hid.VendorID) "&PID_" Format("{:04x}", Data.hid.ProductID)
+	key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" Format("{:04x}", Data.hid.dwVendorID) "&PID_" Format("{:04x}", Data.hid.dwProductID)
 	Regread, human_name, HKLM, % key, OEMName
     
     ; Decode capabilities
@@ -39,7 +39,7 @@ Loop % NumDevices {
     ;btns := pButtonCaps.Range.UsageMax - pButtonCaps.Range.UsageMin + 1
     
     ; Update LV
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.dwType], handle, Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.dwType], handle, Data.hid.dwVendorID, Data.hid.dwProductId, Data.hid.usUsagePage, Data.hid.usUsage, human_name, btns )
 }
 
 LV_Modifycol()
@@ -51,12 +51,12 @@ InputMsg(wParam, lParam) {
     r := HID.GetRawInputData(lParam,,Data)
     msgbox % A_ThisFunc ": " r
     if (r > 0){
-        tooltip % Data.hid.UsagePage
+        tooltip % Data.hid.dwUsagePage
     }
     ;ri := new _Struct(WinStructs.RAWINPUT,,lParam)
     ;if (ri.header.Type = 2){
-        ;tooltip % ri.header.Device
-        ;tooltip % Data.hid.UsagePage
+        ;tooltip % ri.header.hDevice
+        ;tooltip % Data.hid.dwUsagePage
     ;}
 }
 
@@ -66,8 +66,8 @@ SelectDevice:
         ; Register Device
         handle := DeviceList[s].hDevice
         rid := new _struct(WinStructs.RAWINPUTDEVICE)
-        rid.UsagePage := DevData[s].hid.UsagePage
-        rid.Usage := DevData[s].hid.Usage
+        rid.dwUsagePage := DevData[s].hid.dwUsagePage
+        rid.dwUsage := DevData[s].hid.dwUsage
         rid.Target := A_ScriptHwnd
         ;rid.Flags := HID.RIDEV_INPUTSINK
         rid.Flags := 0

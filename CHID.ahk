@@ -97,7 +97,7 @@ Class CHID {
 		;if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {   ; RawInputDeviceList contains a struct, not a number
 				if (Command = this.RIDI_DEVICEINFO){
-					Data := new _Struct("WinStructs.RID_DEVICE_INFO",{size:Size})
+					Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 				} else if (Command = this.RIDI_PREPARSEDDATA){
 					VarSetCapacity(Data, Size)
