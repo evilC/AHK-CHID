@@ -47,7 +47,7 @@ return
 
 InputMsg(wParam, lParam) {
     global HID
-    
+    SoundBeep, 500, 100
     r := HID.GetRawInputData(lParam,,Data)
     msgbox % A_ThisFunc ": " r
     if (r > 0){
@@ -66,11 +66,11 @@ SelectDevice:
         ; Register Device
         handle := DeviceList[s].hDevice
         rid := new _struct(WinStructs.RAWINPUTDEVICE)
-        rid.dwUsagePage := DevData[s].hid.dwUsagePage
-        rid.dwUsage := DevData[s].hid.dwUsage
-        rid.Target := A_ScriptHwnd
+        rid.usUsagePage := DevData[s].hid.usUsagePage
+        rid.usUsage := DevData[s].hid.usUsage
+        rid.hwndTarget := A_ScriptHwnd
         ;rid.Flags := HID.RIDEV_INPUTSINK
-        rid.Flags := 0
+        rid.dwFlags := 0
         
         ret := HID.RegisterRawInputDevices(rid, 1)
         OnMessage(0x00FF, "InputMsg")
