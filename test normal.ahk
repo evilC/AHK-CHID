@@ -9,17 +9,17 @@ Gui, Show
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
-DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].Device)
+DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice)
 
 DevData := []
 
 Loop % NumDevices {
     ; Get device Handle
 	dev := DeviceList[A_Index]
-	if (dev.Type != 2){
+	if (dev.dwType != 2){
 		continue
 	}
-	handle := DeviceList[A_Index].Device
+	handle := DeviceList[A_Index].hDevice
     
     ; Get Device Info
 	HID.GetRawInputDeviceInfo(handle, ,Data, DevSize)
@@ -34,11 +34,12 @@ Loop % NumDevices {
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
     HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-    btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
+    ;btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
+    ;btns := pButtonCaps[1]
     ;btns := pButtonCaps.Range.UsageMax - pButtonCaps.Range.UsageMin + 1
     
     ; Update LV
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.Type], handle, Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
+	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.dwType], handle, Data.hid.VendorID, Data.hid.ProductId, Data.hid.UsagePage, Data.hid.Usage, human_name, btns )
 }
 
 LV_Modifycol()
@@ -63,7 +64,7 @@ SelectDevice:
     LV_GetText(s, LV_GetNext())
     if (A_GuiEvent = "i" && s > 0){
         ; Register Device
-        handle := DeviceList[s].Device
+        handle := DeviceList[s].hDevice
         rid := new _struct(WinStructs.RAWINPUTDEVICE)
         rid.UsagePage := DevData[s].hid.UsagePage
         rid.Usage := DevData[s].hid.Usage
