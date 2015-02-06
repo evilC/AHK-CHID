@@ -30,13 +30,21 @@ Loop % NumDevices {
 	Regread, human_name, HKLM, % key, OEMName
     
     ; Decode capabilities
+    /*
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
     HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
     ;btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
     ;btns := pButtonCaps.Range.UsageMax - pButtonCaps.Range.UsageMin + 1
-    
+    */
+    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+    ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    if (Caps.NumberInputButtonCaps) {
+      HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+      btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+    } else btns:=0
     ; Update LV
 	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.dwType], handle, Data.hid.dwVendorID, Data.hid.dwProductId, Data.hid.usUsagePage, Data.hid.usUsage, human_name, btns )
 }
