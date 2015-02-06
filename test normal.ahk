@@ -111,6 +111,9 @@ InputMsg(wParam, lParam) {
     
     bufferSize := HID.GetRawInputData(lParam)
     ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
+    if (ret = -1){
+        return
+    }
     handle := pRawInput.header.hDevice
     if (handle){
         ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)

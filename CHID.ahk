@@ -128,7 +128,7 @@ Class CHID {
 		  _In_       UINT cbSizeHeader
 		);		
 		*/
-		static cbSizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
+		static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
 		
 		if (uiCommand = -1){
 			uiCommand := this.RID_INPUT
@@ -141,7 +141,7 @@ Class CHID {
 		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % ErrorLevel ", " RawInput
+			;msgbox % ErrorLevel ", " RawInput
 			Return -1
 		}
 		r := pcbSize
