@@ -1,3 +1,4 @@
+; NOT WORKING AT THE MOMENT, SEE TEST NORMAL.AHK FOR CURRENT BLEEDING EDGE
 ; TEST CODE
 #singleinstance force
 #Include CHID Helper.ahk

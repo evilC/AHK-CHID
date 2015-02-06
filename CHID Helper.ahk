@@ -1,3 +1,4 @@
+; NOT WORKING AT THE MOMENT, SEE TEST NORMAL.AHK FOR CURRENT BLEEDING EDGE
 ; A set of helper classes to simplify the code required to get data via HID.
 ; Makes use of meta-functions (ie __Get) to reduce the need for function calls, and reduce the burden on your code to decide which API calls to make and when.
 #Include CHID.ahk

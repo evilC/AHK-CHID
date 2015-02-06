@@ -1,3 +1,4 @@
+; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #Include <_Struct>
 #singleinstance force
 #Include CHID.ahk
