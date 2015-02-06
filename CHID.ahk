@@ -216,4 +216,25 @@ Class CHID {
 		}
 		return r
 	}
+	
+	HidP_GetValueCaps(ReportType, ByRef ValueCaps, ByRef ValueCapsLength, ByRef PreparsedData){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539754%28v=vs.85%29.aspx
+		
+		NTSTATUS __stdcall HidP_GetValueCaps(
+		  _In_     HIDP_REPORT_TYPE ReportType,
+		  _Out_    PHIDP_VALUE_CAPS ValueCaps,
+		  _Inout_  PUSHORT ValueCapsLength,
+		  _In_     PHIDP_PREPARSED_DATA PreparsedData
+		);
+		*/
+		ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS[" ValueCapsLength "]")
+		r := DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps[], "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
+		If (r = -1) Or ErrorLevel {
+			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			msgbox % Errorlevel
+			Return -1
+		}
+		return r
+	}
 }

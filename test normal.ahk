@@ -3,14 +3,24 @@
 #Include CHID.ahk
 
 Gui +Resize -MaximizeBox -MinimizeBox
-Gui, Add, Listview, w400 h300 vlvDL gSelectDevice AltSubmit,#|Name|VID|PID|UsagePage|Usage|Buttons
-Gui, Show
+Gui, Add, Listview, w651 h400 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+LV_Modifycol(1,20)
+LV_Modifycol(2,180)
+LV_Modifycol(3,40)
+LV_Modifycol(4,140)
+LV_Modifycol(5,50)
+LV_Modifycol(6,50)
+LV_Modifycol(7,50)
+LV_Modifycol(8,50)
+LV_Modifycol(9,50)
+Gui, Show,, Joystick Info
 
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
 DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice)
 
+AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
 Loop % NumDevices {
@@ -41,15 +51,58 @@ Loop % NumDevices {
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    Axes := ""
+    Hats := 0
+    btns := 0
+
+    ; Buttons
     if (Caps.NumberInputButtonCaps) {
-      HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-      btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
-    } else btns:=0
+        HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+        btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+    }
+    ; Axes / Hats
+    if (Caps.NumberInputValueCaps) {
+        HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+        AxisCaps := {}
+                Loop % Caps.NumberInputValueCaps {
+            Type := (Range:=pValueCaps[A_Index].Range).UsageMin
+            if (Type = 0x39){
+                ; Hat
+                Hats++
+            } else if (Type >= 0x30 && Type <= 0x38) {
+                ; If one of the known 8 standard axes
+                Type -= 0x2F
+                if (Axes != ""){
+                    Axes .= ","
+                }
+                Axes .= AxisNames[Type]
+                AxisCaps[AxisNames[Type]] := 1
+            }
+        }
+        Axes := ""
+        Count := 0
+        ; Sort Axis Names into order
+        Loop % AxisNames.MaxIndex() {
+            if (AxisCaps[AxisNames[A_Index]] = 1){
+                if (Count){
+                    Axes .= ","
+                }
+                Axes .= AxisNames[A_Index]
+                Count++
+            }
+        }
+    }
     ; Update LV
-	LV_Add(,A_INDEX, human_name, VID, PID, Data.hid.usUsagePage, Data.hid.usUsage, btns )
+    if (!btns && Axes = "" && !Hats){
+        continue
+    }
+    if (human_name = ""){
+        human_name := "Unknown"
+    }
+	LV_Add(,A_INDEX, human_name, btns, Axes, Hats, VID, PID, Data.hid.usUsagePage, Data.hid.usUsage )
 }
 
-LV_Modifycol()
+;LV_Modifycol()
 return
 
 InputMsg(wParam, lParam) {
