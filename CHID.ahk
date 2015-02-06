@@ -135,7 +135,7 @@ Class CHID {
 		}
 		if (pcbSize){
 			pData := new _Struct("WinStructs.RAWINPUT")
-			r := DllCall("GetRawInputData", "Ptr", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
+			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
 		} else {
 			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader )
 		}
