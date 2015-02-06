@@ -3,7 +3,7 @@
 #Include CHID.ahk
 
 Gui +Resize -MaximizeBox -MinimizeBox
-Gui, Add, Listview, w400 h300 vlvDL gSelectDevice AltSubmit,#|Type|Handle|VID|PID|UsagePage|Usage|Name|Buttons
+Gui, Add, Listview, w400 h300 vlvDL gSelectDevice AltSubmit,#|Name|VID|PID|UsagePage|Usage|Buttons
 Gui, Show
 
 HID := new CHID()
@@ -26,18 +26,18 @@ Loop % NumDevices {
     DevData[A_Index] := Data
     
     ; Find Human name from registry
-	key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" Format("{:04x}", Data.hid.dwVendorID) "&PID_" Format("{:04x}", Data.hid.dwProductID)
-	Regread, human_name, HKLM, % key, OEMName
-    
+    VID := Format("{:04x}", Data.hid.dwVendorID)
+    StringUpper,VID, VID
+    PID := Format("{:04x}", Data.hid.dwProductID)
+    StringUpper,PID, PID
+    if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
+        ; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
+        human_name := "XBOX 360 Controller"
+    } else {
+        key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" VID "&PID_" PID
+        RegRead, human_name, HKLM, % key, OEMName
+    }
     ; Decode capabilities
-    /*
-    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
-    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
-    ret := HID.HidP_GetCaps(PreparsedData, Caps)
-    HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-    ;btns := pButtonCaps[1].Range.UsageMax - pButtonCaps[1].Range.UsageMin + 1
-    ;btns := pButtonCaps.Range.UsageMax - pButtonCaps.Range.UsageMin + 1
-    */
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
@@ -46,7 +46,7 @@ Loop % NumDevices {
       btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
     } else btns:=0
     ; Update LV
-	LV_Add(,A_INDEX, CHID.RIM_TYPE[dev.dwType], handle, Data.hid.dwVendorID, Data.hid.dwProductId, Data.hid.usUsagePage, Data.hid.usUsage, human_name, btns )
+	LV_Add(,A_INDEX, human_name, VID, PID, Data.hid.usUsagePage, Data.hid.usUsage, btns )
 }
 
 LV_Modifycol()
