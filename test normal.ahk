@@ -108,17 +108,9 @@ return
 
 InputMsg(wParam, lParam) {
     global HID
-    ;SoundBeep, 500, 100
-    r := HID.GetRawInputData(lParam,,Data)
-    ;msgbox % A_ThisFunc ": " r
-    if (r > 0){
-        tooltip % Data.hid.dwUsagePage
-    }
-    ;ri := new _Struct(WinStructs.RAWINPUT,,lParam)
-    ;if (ri.header.Type = 2){
-        ;tooltip % ri.header.hDevice
-        ;tooltip % Data.hid.dwUsagePage
-    ;}
+    bufferSize := HID.GetRawInputData(lParam)
+    ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
+    MsgBox % Data.header.hDevice
 }
 
 SelectDevice:

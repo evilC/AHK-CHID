@@ -116,7 +116,7 @@ Class CHID {
 		return Size
 	}
 	
-	GetRawInputData(RawInput, Command := -1, ByRef Data := 0, ByRef Size := 0){
+	GetRawInputData(hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
 		
@@ -128,51 +128,23 @@ Class CHID {
 		  _In_       UINT cbSizeHeader
 		);		
 		*/
-		;RawInput := new _Struct(WinStructs.RAWINPUT,,lParam)
-		static SizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
+		static cbSizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
 		
-		if (Command = -1){
-			Command := this.RID_INPUT
+		if (uiCommand = -1){
+			uiCommand := this.RID_INPUT
 		}
-		if (RawInput){
-			
-		}
-		if (Size){
-			;Data := new _Struct(Winstructs.RAWINPUT)
-			;msgbox % "Size: " Size ", sizeof: " sizeof(Data)
-			;Size := sizeof(Data)
-			;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", Size, "Uint", SizeHeader )
-			;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", sizeof(Data), "Uint", SizeHeader )
-			VarSetCapacity(Data, Size)
-			d := new  _Struct(Winstructs.RAWINPUTDEVICE)
-			msgbox % "SIZE: " Size ", sizeof: " d.Size()
-			r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", &Data, "UInt*", Size, "Uint", SizeHeader )
-			Flag := 0
-			
-			t :=  AHKHID_NumIsShort(Flag) ? (AHKHID_NumIsSigned(Flag) ? "Short" : "UShort") : (AHKHID_NumIsSigned(Flag) ? "Int" : (Flag = 8 ? "Ptr" : "UInt"))
-			;v := NumGet(Data, Flag, t)
-			v := NumGet(Data, 16, t)
-			return v
-			;Data := new _Struct(WinStructs.RAWINPUT,,Data)
+		if (pcbSize){
+			pData := new _Struct("WinStructs.RAWINPUT")
+			r := DllCall("GetRawInputData", "Ptr", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
 		} else {
-			r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", 0, "UInt*", Size, "Uint", SizeHeader )
+			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader )
 		}
-		;SizeHeader := sizeof(WinStructs.RAWINPUTHEADER)
-		;d := new _Struct(Winstructs.RAWINPUT)
-		;s := sizeof(d)
-		;Data := new _Struct(Winstructs.RAWINPUT)
-		;Size := sizeof(Data)
-		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data[], "UInt*", &Size, "Uint", SizeHeader )
-		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data, "UInt*", 0, "Uint", SizeHeader )
-		;r := DllCall("GetRawInputData", "Uint", RawInput, "UInt", Command, "Ptr", Data, "UInt*", 0, "Uint", SizeHeader )
-		;Data := d
-		;Data := new _Struct(Winstructs.RAWINPUT,,Data)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % ErrorLevel ", " RawInput
 			Return -1
 		}
-		r := Size
+		r := pcbSize
 		return r
 	}
 	
