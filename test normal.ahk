@@ -160,7 +160,7 @@ InputMsg(wParam, lParam) {
                 }
             }
         }
-        MsgBox % "buttons: " btns
+        ;MsgBox % "buttons: " btns
     }
 }
 
