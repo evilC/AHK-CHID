@@ -127,6 +127,10 @@ InputMsg(wParam, lParam) {
         if (Caps.NumberInputButtonCaps) {
             HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
             btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+            
+            MsgBox % pRawInput.data.hid.dwSizeHid
+            ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, usage, btns, PreparsedData, pRawInput.data.hid.bRawData, pRawInput.data.hid.dwSizeHid)
+            ;MsgBox % ret
         }
         ; Axes / Hats
         if (Caps.NumberInputValueCaps) {
