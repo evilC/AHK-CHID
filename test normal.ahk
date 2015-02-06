@@ -108,9 +108,57 @@ return
 
 InputMsg(wParam, lParam) {
     global HID
+    
     bufferSize := HID.GetRawInputData(lParam)
     ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
-    MsgBox % Data.header.hDevice
+    handle := pRawInput.header.hDevice
+    if (handle){
+        ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+        ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+        ret := HID.HidP_GetCaps(PreparsedData, Caps)
+        Axes := ""
+        Hats := 0
+        btns := 0
+
+        ; Buttons
+        if (Caps.NumberInputButtonCaps) {
+            HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+            btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+        }
+        ; Axes / Hats
+        if (Caps.NumberInputValueCaps) {
+            HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+            AxisCaps := {}
+                    Loop % Caps.NumberInputValueCaps {
+                Type := (Range:=pValueCaps[A_Index].Range).UsageMin
+                if (Type = 0x39){
+                    ; Hat
+                    Hats++
+                } else if (Type >= 0x30 && Type <= 0x38) {
+                    ; If one of the known 8 standard axes
+                    Type -= 0x2F
+                    if (Axes != ""){
+                        Axes .= ","
+                    }
+                    Axes .= AxisNames[Type]
+                    AxisCaps[AxisNames[Type]] := 1
+                }
+            }
+            Axes := ""
+            Count := 0
+            ; Sort Axis Names into order
+            Loop % AxisNames.MaxIndex() {
+                if (AxisCaps[AxisNames[A_Index]] = 1){
+                    if (Count){
+                        Axes .= ","
+                    }
+                    Axes .= AxisNames[A_Index]
+                    Count++
+                }
+            }
+        }
+        MsgBox % "buttons: " btns
+    }
 }
 
 SelectDevice:
