@@ -226,7 +226,7 @@ Class CHID {
 		);
 		*/
 		
-		r := DllCall("HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", &UsageList, "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", &UsageList, "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
@@ -252,7 +252,7 @@ Class CHID {
 		);
 		*/
 		
-		r := DllCall("HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", &UsageValue, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", &UsageValue, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
