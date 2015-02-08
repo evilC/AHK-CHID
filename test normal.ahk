@@ -24,6 +24,8 @@ DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice)
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
+SelectedDevice := 0
+
 Loop % NumDevices {
     ; Get device Handle
 	dev := DeviceList[A_Index]
@@ -108,6 +110,7 @@ return
 
 InputMsg(wParam, lParam) {
     global HID
+    global SelectedDevice
     
     bufferSize := HID.GetRawInputData(lParam)
     ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
@@ -115,57 +118,62 @@ InputMsg(wParam, lParam) {
         return
     }
     handle := pRawInput.header.hDevice
-    if (handle){
-        ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
-        ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
-        ret := HID.HidP_GetCaps(PreparsedData, Caps)
-        Axes := ""
-        Hats := 0
-        btns := 0
-
-        ; Buttons
-        if (Caps.NumberInputButtonCaps) {
-            HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-            btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
-            
-            MsgBox % pRawInput.data.hid.dwSizeHid
-            ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, usage, btns, PreparsedData, pRawInput.data.hid.bRawData, pRawInput.data.hid.dwSizeHid)
-            ;MsgBox % ret
-        }
-        ; Axes / Hats
-        if (Caps.NumberInputValueCaps) {
-            HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
-            AxisCaps := {}
-                    Loop % Caps.NumberInputValueCaps {
-                Type := (Range:=pValueCaps[A_Index].Range).UsageMin
-                if (Type = 0x39){
-                    ; Hat
-                    Hats++
-                } else if (Type >= 0x30 && Type <= 0x38) {
-                    ; If one of the known 8 standard axes
-                    Type -= 0x2F
-                    if (Axes != ""){
-                        Axes .= ","
-                    }
-                    Axes .= AxisNames[Type]
-                    AxisCaps[AxisNames[Type]] := 1
-                }
-            }
-            Axes := ""
-            Count := 0
-            ; Sort Axis Names into order
-            Loop % AxisNames.MaxIndex() {
-                if (AxisCaps[AxisNames[A_Index]] = 1){
-                    if (Count){
-                        Axes .= ","
-                    }
-                    Axes .= AxisNames[A_Index]
-                    Count++
-                }
-            }
-        }
-        ;MsgBox % "buttons: " btns
+    if (!handle || handle != SelectedDevice){
+        return
     }
+    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+    ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    
+    Axes := ""
+    Hats := 0
+    btns := 0
+
+    ; Buttons
+    if (Caps.NumberInputButtonCaps) {
+        ; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
+        HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+        return
+        btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+        
+        MsgBox % pRawInput.data.hid.dwSizeHid
+        ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, usage, btns, PreparsedData, pRawInput.data.hid.bRawData, pRawInput.data.hid.dwSizeHid)
+        ;MsgBox % ret
+    }
+
+    ; Axes / Hats
+    if (Caps.NumberInputValueCaps) {
+        HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+        AxisCaps := {}
+                Loop % Caps.NumberInputValueCaps {
+            Type := (Range:=pValueCaps[A_Index].Range).UsageMin
+            if (Type = 0x39){
+                ; Hat
+                Hats++
+            } else if (Type >= 0x30 && Type <= 0x38) {
+                ; If one of the known 8 standard axes
+                Type -= 0x2F
+                if (Axes != ""){
+                    Axes .= ","
+                }
+                Axes .= AxisNames[Type]
+                AxisCaps[AxisNames[Type]] := 1
+            }
+        }
+        Axes := ""
+        Count := 0
+        ; Sort Axis Names into order
+        Loop % AxisNames.MaxIndex() {
+            if (AxisCaps[AxisNames[A_Index]] = 1){
+                if (Count){
+                    Axes .= ","
+                }
+                Axes .= AxisNames[A_Index]
+                Count++
+            }
+        }
+    }
+    ;MsgBox % "buttons: " btns
 }
 
 SelectDevice:
@@ -181,6 +189,7 @@ SelectDevice:
         rid.dwFlags := 0
         
         ret := HID.RegisterRawInputDevices(rid, 1)
+        SelectedDevice := handle
         OnMessage(0x00FF, "InputMsg")
         ;msgbox % ret
     }
