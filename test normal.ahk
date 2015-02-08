@@ -124,6 +124,9 @@ InputMsg(wParam, lParam) {
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    if (r = -1){
+        return
+    }
     
     Axes := ""
     Hats := 0
@@ -133,13 +136,17 @@ InputMsg(wParam, lParam) {
     if (Caps.NumberInputButtonCaps) {
         ; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
         HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-        return
         btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
-        
-        MsgBox % pRawInput.data.hid.dwSizeHid
-        ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, usage, btns, PreparsedData, pRawInput.data.hid.bRawData, pRawInput.data.hid.dwSizeHid)
+        UsageLength := btns
+        ; Why does usage page for all controllers always appear to be 9? No controllers have stuff on page 9...
+        ;UsagePage := 1
+        UsagePage := pButtonCaps.1.UsagePage
+        ; pRawInput.hid.bRawData is always 0? Cause of issue?
+        ToolTip % "DBG`nUsagePage: " UsagePage "`nUsageLength: " UsageLength "`npRawInput.hid.bRawData: " pRawInput.hid.bRawData "`npRawInput.hid.dwSizeHid: " pRawInput.hid.dwSizeHid
+        ret := HID.HidP_GetUsages(0, pButtonCaps.1.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
         ;MsgBox % ret
     }
+    return
 
     ; Axes / Hats
     if (Caps.NumberInputValueCaps) {

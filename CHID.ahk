@@ -11,7 +11,7 @@ Class CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 
@@ -159,6 +159,13 @@ Class CHID {
 		*/
 		Capabilities := new _Struct("WinStructs.HIDP_CAPS")
 		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
+		if (r = this.HIDP_STATUS_SUCCESS){
+			r := 0
+		;} else if (r = this.HIDP_STATUS_INVALID_PREPARSED_DATA){
+		} else {
+			MsgBox % r
+			r := -1
+		}
 		If (r = -1) Or ErrorLevel {
 			soundbeep
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
@@ -181,6 +188,12 @@ Class CHID {
 		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
 		;r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", &ButtonCapsLength, "Ptr", &PreparsedData)
 		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
+		if (r = this.HIDP_STATUS_SUCCESS){
+			r := 0
+		} else {
+			MsgBox % r
+			r := -1
+		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
@@ -202,6 +215,12 @@ Class CHID {
 		*/
 		ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS[" ValueCapsLength "]")
 		r := DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps[], "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
+		if (r = this.HIDP_STATUS_SUCCESS){
+			r := 0
+		} else {
+			MsgBox % r
+			r := -1
+		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
@@ -227,6 +246,12 @@ Class CHID {
 		*/
 		
 		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", &UsageList, "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		if (r = this.HIDP_STATUS_SUCCESS){
+			r := 0
+		} else {
+			MsgBox % r
+			r := -1
+		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
@@ -253,6 +278,12 @@ Class CHID {
 		*/
 		
 		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", &UsageValue, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		if (r = this.HIDP_STATUS_SUCCESS){
+			r := 0
+		} else {
+			MsgBox % r
+			r := -1
+		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			msgbox % Errorlevel
