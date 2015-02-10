@@ -1,11 +1,40 @@
 ; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
-#Include <_Struct>
+#include <CHID>
 AHKHID_UseConstants()
 #singleinstance force
-#Include CHID.ahk
+
+;----------------------------------------------------------------
+; Function:     ErrMsg
+;               Get the description of the operating system error
+;               
+; Parameters:
+;               ErrNum  - Error number (default = A_LastError)
+;
+; Returns:
+;               String
+;
+ErrMsg(ErrNum=""){ 
+    if ErrNum=
+        ErrNum := A_LastError
+
+    VarSetCapacity(ErrorString, 1024) ;String to hold the error-message.    
+    DllCall("FormatMessage" 
+         , "UINT", 0x00001000     ;FORMAT_MESSAGE_FROM_SYSTEM: The function should search the system message-table resource(s) for the requested message. 
+         , "UINT", 0              ;A handle to the module that contains the message table to search.
+         , "UINT", ErrNum 
+         , "UINT", 0              ;Language-ID is automatically retreived 
+         , "Str",  ErrorString 
+         , "UINT", 1024           ;Buffer-Length 
+         , "str",  "")            ;An array of values that are used as insert values in the formatted message. (not used) 
+    
+    StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
+    return %ErrorString% 
+}
 
 Gui +Resize -MaximizeBox -MinimizeBox
 Gui, Add, Listview, w651 h400 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+Gui, Add, Listview, w651 h400 vlvDLDBG AltSubmit +Grid,Tick|Text
+Gui,ListView,lvDL
 LV_Modifycol(1,20)
 LV_Modifycol(2,180)
 LV_Modifycol(3,40)
@@ -114,50 +143,66 @@ InputMsg(wParam, lParam) {
     global SelectedDevice
     ; Start AHKHID test
     global II_DEVTYPE, RIM_TYPEHID, II_DEVHANDLE, DI_HID_VENDORID, DI_HID_PRODUCTID
-    
-    r := AHKHID_GetInputInfo(lParam, II_DEVTYPE)
-    If (r = RIM_TYPEHID) {
-        handle := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
-        if (handle != SelectedDevice){
-            return
-        }
-    } else {
-        return
-    }
+    ;~ r := AHKHID_GetInputInfo(lParam, II_DEVTYPE)
+	;~ iSize := ErrorLevel
+    ;~ If (r = RIM_TYPEHID) {
+        ;~ handle := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
+        ;~ if (handle != SelectedDevice){
+            ;~ return
+        ;~ }
+    ;~ } else {
+        ;~ MsgBox b
+        ;~ return
+    ;~ }
     ; end AHKHID test
-    /*
-    bufferSize := HID.GetRawInputData(lParam)
-    ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
-    if (ret = -1){
+	
+    If (!pcbSize:=HID.GetRawInputData(lParam))
+		return
+	;~ if (pcbSize!=iSize)
+		;~ MsgBox % pcbSize "-" iSize
+	if (-1 = ret := HID.GetRawInputData(lParam,,pRawInput, pcbSize))
         return
-    }
+	;~ MsgBox % SelectedDevice "-" pRawInput.header.hDevice "-" handle
+	;~ Sleep 500
     handle := pRawInput.header.hDevice
+	if (handle = 0)
+		MsgBox error handle 0
+	if (handle != SelectedDevice){
+		return
+	}
     devtype := pRawInput.header.dwType
-    if (devtype != RIM_TYPEHID || !handle || handle != SelectedDevice){
+    if (devtype != RIM_TYPEHID){
         return
     }
-    */
+
+    
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
+	;~ OutputDebug % ret "-" ppSize "-" ErrMsg()
     if (ret != 0){
-        return
+        MsgBox 3
     }
     ;return
     Axes := ""
     Hats := 0
     btns := 0
     ; Buttons
+	
     if (Caps.NumberInputButtonCaps) {
         ; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
         HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-        btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+		btns := (Range:=pButtonCaps.3.Range).UsageMax - Range.UsageMin + 1
         UsageLength := btns
+		;~ OutputDebug, % "btns: " btns "`nhandle: " handle ":" ahandle " : " pcbSize
         ; Why does usage page for all controllers always appear to be 9? No controllers have stuff on page 9...
         ;UsagePage := 1
-        UsagePage := pButtonCaps.1.UsagePage
+        UsagePage := pButtonCaps.3.UsagePage
         ; pRawInput.hid.bRawData is always 0? Cause of issue?
-        ToolTip % "DBG`nUsagePage: " UsagePage "`nUsageLength: " UsageLength "`npRawInput.hid.bRawData: " pRawInput.hid.bRawData "`npRawInput.hid.dwSizeHid: " pRawInput.hid.dwSizeHid
+        Gui,ListView,lvDLDBG
+		LV_Add("",A_TickCount,UsagePage)
+		LV_Add("",A_TickCount,NumGet(pButtonCaps[],0,"UShort"))
+        ;~ OutputDebug % "DBG`nUsagePage: " UsagePage "`nUsageLength: " UsageLength "`npRawInput.hid.bRawData: " pRawInput.hid.bRawData "`npRawInput.hid.dwSizeHid: " pRawInput.hid.dwSizeHid
         ;ret := HID.HidP_GetUsages(0, pButtonCaps.1.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
     }
     return
@@ -205,7 +250,7 @@ SelectDevice:
         rid := new _struct(WinStructs.RAWINPUTDEVICE)
         rid.usUsagePage := DevData[s].hid.usUsagePage
         rid.usUsage := DevData[s].hid.usUsage
-        rid.hwndTarget := A_ScriptHwnd
+        rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
         ;rid.Flags := HID.RIDEV_INPUTSINK
         rid.dwFlags := 0
         
@@ -223,8 +268,8 @@ GuiSize:
 Esc::
 GuiClose:
 	ExitApp
-
-; =================================================================================
+	
+	; =================================================================================
 ; Function:     AutoXYWH
 ;   Move and resize control automatically when GUI resized.
 ; Parameters:
@@ -276,5 +321,3 @@ AutoXYWH(ctrl_list, Attributes, Redraw = False)
         }
     }
 }
-
-#include <AHKHID>

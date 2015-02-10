@@ -35,9 +35,7 @@ Class CHID {
 		r := DllCall("RegisterRawInputDevices", "Ptr", RawInputDevices[], "UInt", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICE) )
 		;Check for errors
 		if ((r = -1) Or ErrorLevel) {
-			ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-			msgbox % "EL: " ErrorLevel
-			Return -1
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		return r
 	}
@@ -116,7 +114,8 @@ Class CHID {
 		return Size
 	}
 	
-	GetRawInputData(hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
+	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
+		static staticvar,init:=VarSetCapacity(staticvar,1000)
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
 		
@@ -134,15 +133,15 @@ Class CHID {
 			uiCommand := this.RID_INPUT
 		}
 		if (pcbSize){
-			pData := new _Struct("WinStructs.RAWINPUT")
+			pData := new _Struct(WinStructs.RAWINPUT)
+			;~ ObjSetCapacity(pData,"`a",pcbSize),pData[""]:=ObjGetAddress(pData,"`a")
 			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
 		} else {
 			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader )
 		}
 		If (r = -1) Or ErrorLevel {
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % ErrorLevel ", " RawInput
-			Return -1
+			ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nhandle: " hRawInput "`nLast Error: " ErrMsg(A_LastError)
+			Return -1, ErrorLevel ", " RawInput
 		}
 		r := pcbSize
 		return r
@@ -166,10 +165,9 @@ Class CHID {
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			soundbeep
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			MsgBox % ErrorLevel
-			Return -1
+			SoundBeep
+			;~ OutputDebug % ErrMsg()
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		return r
 	}
@@ -191,13 +189,10 @@ Class CHID {
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
-			MsgBox % r
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % Errorlevel
-			Return -1
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		return r
 	}
@@ -218,13 +213,10 @@ Class CHID {
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
-			MsgBox % r
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % Errorlevel
-			Return -1
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		return r
 	}
@@ -249,13 +241,10 @@ Class CHID {
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
-			MsgBox % r
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % Errorlevel
-			Return -1
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		r := UsageList
 		return r
@@ -281,13 +270,10 @@ Class CHID {
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
-			MsgBox % r
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			msgbox % Errorlevel
-			Return -1
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
 		}
 		r := UsageValue
 		return r
