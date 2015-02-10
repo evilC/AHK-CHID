@@ -141,7 +141,7 @@ Class CHID {
 		}
 		If (r = -1) Or ErrorLevel {
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			;msgbox % ErrorLevel ", " RawInput
+			msgbox % ErrorLevel ", " RawInput
 			Return -1
 		}
 		r := pcbSize
@@ -163,12 +163,12 @@ Class CHID {
 			r := 0
 		;} else if (r = this.HIDP_STATUS_INVALID_PREPARSED_DATA){
 		} else {
-			MsgBox % r
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
 			soundbeep
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			MsgBox % ErrorLevel
 			Return -1
 		}
 		return r

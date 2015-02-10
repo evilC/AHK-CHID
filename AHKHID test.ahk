@@ -35,6 +35,7 @@ AHKHID_Register(1, 4, A_ScriptHwnd, 0)
 
 Return
 
+Esc::
 GuiClose:
 ExitApp
 
@@ -50,9 +51,11 @@ InputMsg(wParam, lParam) {
         r := AHKHID_GetInputData(lParam, uData)
 		vid := AHKHID_GetDevInfo(h, DI_HID_VENDORID,     True)
 		pid := AHKHID_GetDevInfo(h, DI_HID_PRODUCTID,    True)
-		if (vid != 1103){
+		if (vid != 0x1234){
 			return
 		}
+        vid := Format("{:x}",vid)
+        pid := Format("{:x}",pid)
         GuiControl,, lbxInput, % ""
         . " Vendor ID: "   vid
         . " Product ID: "  pid

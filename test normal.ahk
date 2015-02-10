@@ -1,5 +1,6 @@
 ; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #Include <_Struct>
+AHKHID_UseConstants()
 #singleinstance force
 #Include CHID.ahk
 
@@ -111,27 +112,41 @@ return
 InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
+    ; Start AHKHID test
+    global II_DEVTYPE, RIM_TYPEHID, II_DEVHANDLE, DI_HID_VENDORID, DI_HID_PRODUCTID
     
+    r := AHKHID_GetInputInfo(lParam, II_DEVTYPE)
+    If (r = RIM_TYPEHID) {
+        handle := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
+        if (handle != SelectedDevice){
+            return
+        }
+    } else {
+        return
+    }
+    ; end AHKHID test
+    /*
     bufferSize := HID.GetRawInputData(lParam)
     ret := HID.GetRawInputData(lParam,,pRawInput, bufferSize)
     if (ret = -1){
         return
     }
     handle := pRawInput.header.hDevice
-    if (!handle || handle != SelectedDevice){
+    devtype := pRawInput.header.dwType
+    if (devtype != RIM_TYPEHID || !handle || handle != SelectedDevice){
         return
     }
+    */
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
-    if (r = -1){
+    if (ret != 0){
         return
     }
-    
+    ;return
     Axes := ""
     Hats := 0
     btns := 0
-
     ; Buttons
     if (Caps.NumberInputButtonCaps) {
         ; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
@@ -143,8 +158,7 @@ InputMsg(wParam, lParam) {
         UsagePage := pButtonCaps.1.UsagePage
         ; pRawInput.hid.bRawData is always 0? Cause of issue?
         ToolTip % "DBG`nUsagePage: " UsagePage "`nUsageLength: " UsageLength "`npRawInput.hid.bRawData: " pRawInput.hid.bRawData "`npRawInput.hid.dwSizeHid: " pRawInput.hid.dwSizeHid
-        ret := HID.HidP_GetUsages(0, pButtonCaps.1.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
-        ;MsgBox % ret
+        ;ret := HID.HidP_GetUsages(0, pButtonCaps.1.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
     }
     return
 
@@ -262,3 +276,5 @@ AutoXYWH(ctrl_list, Attributes, Redraw = False)
         }
     }
 }
+
+#include <AHKHID>
