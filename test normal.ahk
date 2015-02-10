@@ -141,20 +141,6 @@ return
 InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
-    ; Start AHKHID test
-    global II_DEVTYPE, RIM_TYPEHID, II_DEVHANDLE, DI_HID_VENDORID, DI_HID_PRODUCTID
-    ;~ r := AHKHID_GetInputInfo(lParam, II_DEVTYPE)
-	;~ iSize := ErrorLevel
-    ;~ If (r = RIM_TYPEHID) {
-        ;~ handle := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
-        ;~ if (handle != SelectedDevice){
-            ;~ return
-        ;~ }
-    ;~ } else {
-        ;~ MsgBox b
-        ;~ return
-    ;~ }
-    ; end AHKHID test
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
@@ -171,7 +157,7 @@ InputMsg(wParam, lParam) {
 		return
 	}
     devtype := pRawInput.header.dwType
-    if (devtype != RIM_TYPEHID){
+    if (devtype != HID.RIM_TYPEHID){
         return
     }
 

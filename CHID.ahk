@@ -14,6 +14,7 @@ Class CHID {
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
+	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 
 	__New(){
 		; ToDo: Accelerate DLL calls in here by loading libs etc.
