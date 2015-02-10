@@ -3,34 +3,6 @@
 AHKHID_UseConstants()
 #singleinstance force
 
-;----------------------------------------------------------------
-; Function:     ErrMsg
-;               Get the description of the operating system error
-;               
-; Parameters:
-;               ErrNum  - Error number (default = A_LastError)
-;
-; Returns:
-;               String
-;
-ErrMsg(ErrNum=""){ 
-    if ErrNum=
-        ErrNum := A_LastError
-
-    VarSetCapacity(ErrorString, 1024) ;String to hold the error-message.    
-    DllCall("FormatMessage" 
-         , "UINT", 0x00001000     ;FORMAT_MESSAGE_FROM_SYSTEM: The function should search the system message-table resource(s) for the requested message. 
-         , "UINT", 0              ;A handle to the module that contains the message table to search.
-         , "UINT", ErrNum 
-         , "UINT", 0              ;Language-ID is automatically retreived 
-         , "Str",  ErrorString 
-         , "UINT", 1024           ;Buffer-Length 
-         , "str",  "")            ;An array of values that are used as insert values in the formatted message. (not used) 
-    
-    StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
-    return %ErrorString% 
-}
-
 Gui +Resize -MaximizeBox -MinimizeBox
 Gui, Add, Listview, w651 h400 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
 Gui, Add, Listview, w651 h400 vlvDLDBG AltSubmit +Grid,Tick|Text
@@ -165,7 +137,7 @@ InputMsg(wParam, lParam) {
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
-	;~ OutputDebug % ret "-" ppSize "-" ErrMsg()
+	;~ OutputDebug % ret "-" ppSize "-" HID.ErrMsg()
     if (ret != 0){
         MsgBox 3
     }
@@ -247,63 +219,6 @@ SelectDevice:
     }
     return
 
-GuiSize:
-    AutoXYWH("lvDL", "wh")
-	return
-
 Esc::
 GuiClose:
 	ExitApp
-	
-	; =================================================================================
-; Function:     AutoXYWH
-;   Move and resize control automatically when GUI resized.
-; Parameters:
-;   ctrl_list  - ControlID list separated by "|".
-;                ControlID can be a control HWND, associated variable name or ClassNN.
-;   Attributes - Can be one or more of x/y/w/h
-;   Redraw     - True to redraw controls
-; Examples:
-;   AutoXYWH("Btn1|Btn2", "xy")
-;   AutoXYWH(hEdit      , "wh")
-; ---------------------------------------------------------------------------------
-; AHK version : 1.1.13.01
-; Tested On   : Windows XP SP3 (x86)
-; Release date: 2014-1-2
-; Author      : tmplinshi
-; =================================================================================
-AutoXYWH(ctrl_list, Attributes, Redraw = False)
-{
-    static cInfo := {}, New := []
-
-    Loop, Parse, ctrl_list, |
-    {
-        ctrl := A_LoopField
-
-        if ( cInfo[ctrl]._x = "" )
-        {
-            GuiControlGet, i, Pos, %ctrl%
-            _x := A_GuiWidth  - iX
-            _y := A_GuiHeight - iY
-            _w := A_GuiWidth  - iW
-            _h := A_GuiHeight - iH
-            _a := RegExReplace(Attributes, "i)[^xywh]")
-            cInfo[ctrl] := { _x:_x, _y:_y, _w:_w, _h:_h, _a:StrSplit(_a) }
-        }
-        else
-        {
-            if ( cInfo[ctrl]._a.1 = "" )
-                Return
-
-            New.x := A_GuiWidth  - cInfo[ctrl]._x
-            New.y := A_GuiHeight - cInfo[ctrl]._y
-            New.w := A_GuiWidth  - cInfo[ctrl]._w
-            New.h := A_GuiHeight - cInfo[ctrl]._h
-
-            for i, a in cInfo[ctrl]["_a"]
-                Options .= a New[a] A_Space
-            
-            GuiControl, % Redraw ? "MoveDraw" : "Move", % ctrl, % Options
-        }
-    }
-}
