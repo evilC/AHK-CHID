@@ -49,13 +49,20 @@ ExitApp
 
 InputMsg(wParam, lParam) {
     Critical    ;Or otherwise you could get ERROR_INVALID_HANDLE
-    
+    global HID
     ;Get device type
-    r := AHKHID_GetInputInfo(lParam, II_DEVTYPE) 
+	pcbSize := HID.GetRawInputData(lParam)
+	HID.GetRawInputData(lParam,,pRawInput, pcbSize)
+	handle := pRawInput.header.hDevice
+	devtype := pRawInput.header.dwType
+	
+	r := devtype
+    ;r := AHKHID_GetInputInfo(lParam, II_DEVTYPE) 
     If (r = -1)
         OutputDebug %ErrorLevel%
     If (r = RIM_TYPEHID) {
-        h := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
+		h := Handle
+        ;h := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
         r := AHKHID_GetInputData(lParam, uData)
 		vid := AHKHID_GetDevInfo(h, DI_HID_VENDORID,     True)
 		pid := AHKHID_GetDevInfo(h, DI_HID_PRODUCTID,    True)
