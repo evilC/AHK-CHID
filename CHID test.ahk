@@ -12,6 +12,8 @@ global DI_HID_VERSIONNUMBER        := 16   ;Version number for the HID.
 global DI_HID_USAGEPAGE            := 20 | 0x0100  ;Top-level collection Usage Page for the device.
 global DI_HID_USAGE                := 22 | 0x0100  ;Top-level collection Usage for the device.
 
+#Include <CHID>
+
 ;Create GUI
 Gui +LastFound -Resize -MaximizeBox -MinimizeBox
 Gui, Add, ListBox, x6 ym w650 h320 vlbxInput hwndHwnd,
@@ -29,7 +31,15 @@ OnMessage(0x00FF, "InputMsg")
 ;Show GUI
 Gui, Show
 
-AHKHID_Register(1, 4, A_ScriptHwnd, 0)
+;AHKHID_Register(1, 4, A_ScriptHwnd, 0)
+
+HID := new CHID()
+pRawInputDevices := new _Struct(WinStructs.RAWINPUTDEVICE)
+pRawInputDevices.usUsagePage := 1
+pRawInputDevices.usUsage := 4
+pRawInputDevices.hwndTarget := A_ScriptHwnd
+pRawInputDevices.dwFlags := 0
+HID.RegisterRawInputDevices(pRawInputDevices, 1, sizeof(WinStructs.RAWINPUTDEVICE))
 
 Return
 
