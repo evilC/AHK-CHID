@@ -1,3 +1,6 @@
+/*
+A script to compare results from CHID vs AHKHID
+*/
 #SingleInstance force
 global II_DEVTYPE          := 0    ;Type of the device generating the raw input data. See RIM_ constants.
 global II_DEVHANDLE        := 8    ;Handle to the device generating the raw input data.
@@ -14,10 +17,28 @@ global DI_HID_USAGE                := 22 | 0x0100  ;Top-level collection Usage f
 
 #Include <CHID>
 
+global hLVAhkHid
+global hLVChid
+
 ;Create GUI
 Gui +LastFound -Resize -MaximizeBox -MinimizeBox
-Gui, Add, ListBox, x6 ym w650 h320 vlbxInput hwndHwnd,
-global hlbxInput := Hwnd
+Gui, Add, Text, xm ym Section Center w650, AHKHID
+Gui, Add, Text, ys Section Center w650, CHID
+Gui, Add, ListView, xm yp+25 Section w650 h320 hwndhLVAhkHid, #|VID|PID|UsagePage|Usage|Length|Data
+LV_ModifyCol(1,50)
+LV_ModifyCol(2,50)
+LV_ModifyCol(3,50)
+LV_ModifyCol(4,50)
+LV_ModifyCol(5,50)
+LV_ModifyCol(6,50)
+
+Gui, Add, ListView, ys w650 h320 hwndhLVChid, #|VID|PID|UsagePage|Usage|Length|Data
+LV_ModifyCol(1,50)
+LV_ModifyCol(2,50)
+LV_ModifyCol(3,50)
+LV_ModifyCol(4,50)
+LV_ModifyCol(5,50)
+LV_ModifyCol(6,50)
 
 ;Keep handle
 GuiHandle := A_ScriptHwnd
@@ -50,35 +71,57 @@ ExitApp
 InputMsg(wParam, lParam) {
     Critical    ;Or otherwise you could get ERROR_INVALID_HANDLE
     global HID
-    ;Get device type
-	pcbSize := HID.GetRawInputData(lParam)
-	HID.GetRawInputData(lParam,,pRawInput, pcbSize)
-	handle := pRawInput.header.hDevice
-	devtype := pRawInput.header.dwType
-	
-	r := devtype
-    ;r := AHKHID_GetInputInfo(lParam, II_DEVTYPE) 
+	static msg_id := 0
+	msg_id++
+    ; GetRawInputData call, just get header item
+    r := AHKHID_GetInputInfo(lParam, II_DEVTYPE) 
     If (r = -1)
         OutputDebug %ErrorLevel%
     If (r = RIM_TYPEHID) {
-		h := Handle
-        ;h := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
-        r := AHKHID_GetInputData(lParam, uData)
+		; GetRawInputData call, just get header item
+        h := AHKHID_GetInputInfo(lParam, II_DEVHANDLE)
+		
+		; GetRawInputData call, get everything
+        Size := AHKHID_GetInputData(lParam, uData)
+		
 		vid := AHKHID_GetDevInfo(h, DI_HID_VENDORID,     True)
 		pid := AHKHID_GetDevInfo(h, DI_HID_PRODUCTID,    True)
+		UsagePage := AHKHID_GetDevInfo(h, DI_HID_USAGEPAGE, True)
+		Usage := AHKHID_GetDevInfo(h, DI_HID_USAGE, True)
+		
+		; Only show vJoy stick
 		if (vid != 0x1234){
 			return
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
-        GuiControl,, lbxInput, % ""
-        . " Vendor ID: "   vid
-        . " Product ID: "  pid
-        . " UsPg/Us: " AHKHID_GetDevInfo(h, DI_HID_USAGEPAGE, True) . "/" . AHKHID_GetDevInfo(h, DI_HID_USAGE, True)
-        . " Data: " Bin2Hex(&uData, r)
+		Gui, ListView, % hLVAhkHid
+        LV_Add("", msg_id, vid, pid, UsagePage, Usage, Size, Bin2Hex(&uData, Size))
     }
-    SendMessage, 0x018B, 0, 0,, ahk_id %hlbxInput%
-    SendMessage, 0x0186, ErrorLevel - 1, 0,, ahk_id %hlbxInput%
+	
+	; CHID
+	pcbSize := HID.GetRawInputData(lParam)
+	HID.GetRawInputData(lParam,,pRawInput, pcbSize)
+	handle := pRawInput.header.hDevice
+	devtype := pRawInput.header.dwType
+	
+	if (pRawInput.header.dwType = HID.RIM_TYPEHID){
+		DevSize := HID.GetRawInputDeviceInfo(handle)
+		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, pData, DevSize)
+		vid := pData.hid.dwVendorId
+		pid := pData.hid.dwProductId
+		UsagePage := pData.hid.usUsagePage
+		Usage := pData.hid.usUsage
+		
+		; Only show vJoy stick
+		if (vid != 0x1234){
+			return
+		}
+        vid := Format("{:x}",vid)
+        pid := Format("{:x}",pid)
+		Gui, ListView, % hLVChid
+        LV_Add("", msg_id, vid, pid, UsagePage, Usage, pcbSize, Bin2Hex(&pData, pcbSize))
+	}
 }
 
 ;By Laszlo, adapted by TheGood
