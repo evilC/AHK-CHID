@@ -11,20 +11,22 @@ A script to compare results from CHID vs AHKHID
 Gui +LastFound -Resize -MaximizeBox -MinimizeBox
 Gui, Add, Text, xm ym Section Center w650, AHKHID
 Gui, Add, Text, ys Section Center w650, CHID
-Gui, Add, ListView, xm yp+25 Section w650 h320 hwndhLVAhkHid, #|VID|PID|UsagePage|Usage|Length|Data
-LV_ModifyCol(1,50)
-LV_ModifyCol(2,50)
+Gui, Add, ListView, xm yp+25 Section w650 h320 hwndhLVAhkHid, #|Time|VID|PID|UsagePage|Usage|Length|Data
+LV_ModifyCol(1,30)
+LV_ModifyCol(2,80)
 LV_ModifyCol(3,50)
 LV_ModifyCol(4,50)
 LV_ModifyCol(5,50)
 LV_ModifyCol(6,50)
+LV_ModifyCol(6,50)
 
-Gui, Add, ListView, ys w650 h320 hwndhLVChid, #|VID|PID|UsagePage|Usage|Length|Data
-LV_ModifyCol(1,50)
-LV_ModifyCol(2,50)
+Gui, Add, ListView, ys w650 h320 hwndhLVChid, #|Time|VID|PID|UsagePage|Usage|Length|Data
+LV_ModifyCol(1,30)
+LV_ModifyCol(2,80)
 LV_ModifyCol(3,50)
 LV_ModifyCol(4,50)
 LV_ModifyCol(5,50)
+LV_ModifyCol(6,50)
 LV_ModifyCol(6,50)
 
 ;Keep handle
@@ -56,10 +58,11 @@ InputMsg(wParam, lParam) {
     Critical    ;Or otherwise you could get ERROR_INVALID_HANDLE
 	global hLVAhkHid, hLVChid	; UI
     global HID	; CHID
-	global II_DEVTYPE, II_DEVHANDLE, DI_HID_VENDORID, DI_HID_USAGEPAGE, DI_HID_USAGE, RIM_TYPEHID	; AHKHID
+	global II_DEVTYPE, II_DEVHANDLE, DI_HID_VENDORID, DI_HID_PRODUCTID, DI_HID_USAGEPAGE, DI_HID_USAGE, RIM_TYPEHID	; AHKHID
 	static msg_id := 0
 	
 	msg_id++
+	time := A_TickCount
 	
 	; AHKHID
     ; GetRawInputData call, just get header item
@@ -73,6 +76,7 @@ InputMsg(wParam, lParam) {
 		; GetRawInputData call, get everything
         Size := AHKHID_GetInputData(lParam, uData)
 		
+		; GetRawInputDeviceInfo call
 		vid := AHKHID_GetDevInfo(h, DI_HID_VENDORID,     True)
 		pid := AHKHID_GetDevInfo(h, DI_HID_PRODUCTID,    True)
 		UsagePage := AHKHID_GetDevInfo(h, DI_HID_USAGEPAGE, True)
@@ -80,12 +84,12 @@ InputMsg(wParam, lParam) {
 		
 		; Only show vJoy stick
 		if (vid != 0x1234){
-			return
+			;return
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
 		Gui, ListView, % hLVAhkHid
-        LV_Add("", msg_id, vid, pid, UsagePage, Usage, Size, Bin2Hex(&uData, Size))
+        LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, Size, Bin2Hex(&uData, Size))
     }
 	
 	; CHID
@@ -104,12 +108,12 @@ InputMsg(wParam, lParam) {
 		
 		; Only show vJoy stick
 		if (vid != 0x1234){
-			return
+			;return
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
 		Gui, ListView, % hLVChid
-        LV_Add("", msg_id, vid, pid, UsagePage, Usage, pcbSize, Bin2Hex(&pData, pcbSize))
+        LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, pcbSize, Bin2Hex(&pData, pcbSize))
 	}
 }
 

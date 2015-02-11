@@ -5,8 +5,6 @@ AHKHID_UseConstants()
 
 Gui +Resize -MaximizeBox -MinimizeBox
 Gui, Add, Listview, w651 h400 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
-Gui, Add, Listview, w651 h400 vlvDLDBG AltSubmit +Grid,Tick|Text
-Gui,ListView,lvDL
 LV_Modifycol(1,20)
 LV_Modifycol(2,180)
 LV_Modifycol(3,40)
@@ -16,6 +14,9 @@ LV_Modifycol(6,50)
 LV_Modifycol(7,50)
 LV_Modifycol(8,50)
 LV_Modifycol(9,50)
+Gui, Add, Listview, w651 h400 vlvDLDBG AltSubmit +Grid,Tick|Text
+LV_Modifycol(1,80)
+
 Gui, Show,, Joystick Info
 
 HID := new CHID()
@@ -28,6 +29,7 @@ DevData := []
 
 SelectedDevice := 0
 
+Gui,ListView,lvDL
 Loop % NumDevices {
     ; Get device Handle
 	dev := DeviceList[A_Index]
@@ -69,7 +71,7 @@ Loop % NumDevices {
     if (Caps.NumberInputValueCaps) {
         HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
         AxisCaps := {}
-                Loop % Caps.NumberInputValueCaps {
+        Loop % Caps.NumberInputValueCaps {
             Type := (Range:=pValueCaps[A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
@@ -133,7 +135,17 @@ InputMsg(wParam, lParam) {
         return
     }
 
+    ; Get device info - this does not really need to be done on WM_INPUT, it's just for checks
+    DevSize := HID.GetRawInputDeviceInfo(handle)
+    HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, pData, DevSize)
+    UsagePage := pData.hid.usUsagePage
+    Usage := pData.hid.usUsage
+    vid := pData.hid.dwVendorId
+    pid := pData.hid.dwProductId
+    vid := Format("{:x}",vid)
+    pid := Format("{:x}",pid)
     
+    ; Get Preparsed Data
     ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
@@ -150,17 +162,11 @@ InputMsg(wParam, lParam) {
     if (Caps.NumberInputButtonCaps) {
         ; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
         HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-		btns := (Range:=pButtonCaps.3.Range).UsageMax - Range.UsageMin + 1
+		btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
         UsageLength := btns
-		;~ OutputDebug, % "btns: " btns "`nhandle: " handle ":" ahandle " : " pcbSize
-        ; Why does usage page for all controllers always appear to be 9? No controllers have stuff on page 9...
-        ;UsagePage := 1
-        UsagePage := pButtonCaps.3.UsagePage
-        ; pRawInput.hid.bRawData is always 0? Cause of issue?
+        
         Gui,ListView,lvDLDBG
-		LV_Add("",A_TickCount,UsagePage)
-		LV_Add("",A_TickCount,NumGet(pButtonCaps[],0,"UShort"))
-        ;~ OutputDebug % "DBG`nUsagePage: " UsagePage "`nUsageLength: " UsageLength "`npRawInput.hid.bRawData: " pRawInput.hid.bRawData "`npRawInput.hid.dwSizeHid: " pRawInput.hid.dwSizeHid
+        LV_Add("",A_TickCount,"UsagePage/Usage: " UsagePage "/" Usage "  |  vid/pid: " VID "/" PID "  |  Buttons: " btns)
         ;ret := HID.HidP_GetUsages(0, pButtonCaps.1.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
     }
     return
@@ -169,7 +175,7 @@ InputMsg(wParam, lParam) {
     if (Caps.NumberInputValueCaps) {
         HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
         AxisCaps := {}
-                Loop % Caps.NumberInputValueCaps {
+        Loop % Caps.NumberInputValueCaps {
             Type := (Range:=pValueCaps[A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
@@ -197,6 +203,8 @@ InputMsg(wParam, lParam) {
             }
         }
     }
+    ;LV_Add("",A_TickCount,Axes)
+	;LV_Add("",A_TickCount,"UsagePage/Usage: " UsagePage "/" Usage "  |  vid/pid: " VID "/" PID "  |  Buttons: " btns "  |  Axes: " Count)
     ;MsgBox % "buttons: " btns
 }
 
