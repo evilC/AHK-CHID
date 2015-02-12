@@ -20,7 +20,7 @@ LV_ModifyCol(5,50)
 LV_ModifyCol(6,50)
 LV_ModifyCol(6,50)
 
-Gui, Add, ListView, ys w650 h320 hwndhLVChid, #|Time|VID|PID|UsagePage|Usage|Length|Data
+Gui, Add, ListView, ys w650 h320 hwndhLVChid, #|Time|VID|PID|UsagePage|Usage|Btns|Length|Data
 LV_ModifyCol(1,30)
 LV_ModifyCol(2,80)
 LV_ModifyCol(3,50)
@@ -94,7 +94,8 @@ InputMsg(wParam, lParam) {
 	
 	; CHID
 	pcbSize := HID.GetRawInputData(lParam)
-	HID.GetRawInputData(lParam,,pRawInput, pcbSize)
+	HID.GetRawInputData(lParam, HID.RID_INPUT,pRawInput, pcbSize)
+	;MsgBox % iSize   := NumGet(pRawInput, 16) ;ID_HID_SIZE
 	handle := pRawInput.header.hDevice
 	devtype := pRawInput.header.dwType
 	
@@ -112,8 +113,26 @@ InputMsg(wParam, lParam) {
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
+		
 		Gui, ListView, % hLVChid
-        LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, pcbSize, Bin2Hex(&pData, pcbSize))
+        ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage,, pcbSize, Bin2Hex(&pData, pcbSize))
+		
+		; AHKHID stops here in capabilities.
+		
+		; Get Preparsed Data
+		ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+		ret := HID.HidP_GetCaps(PreparsedData, Caps)
+		if (Caps.NumberInputButtonCaps) {
+			; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
+			HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+			btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+			UsageLength := btns
+			
+			;ret := HID.HidP_GetUsages(0, UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
+		}
+		Gui,ListView,lvDLDBG
+        LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))
 	}
 }
 
