@@ -5,6 +5,7 @@ Inspired by: [AHKHID](https://github.com/jleb/AHKHID).
 
 Dependencies: [_Struct](https://github.com/HotKeyIt/_Struct) , [sizeof()](http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm)
 
+A handy RawInput diagram can be found [here](https://drive.draw.io/?#G0B54wOGCZRwc6WlFqMFM5ak5QajA)
 
 ##What?
 **HID:** Human Interface Device. A standard for input devices that allows querying the device for information (Axis positions, button states etc) without the need for a dedicated devce driver.
