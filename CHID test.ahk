@@ -132,7 +132,8 @@ InputMsg(wParam, lParam) {
 			;ret := HID.HidP_GetUsages(0, UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
 		}
 		Gui,ListView,lvDLDBG
-        LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))
+        ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))
+		LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize-24, Bin2Hex(pRawInput[]+24, pcbSize-24)) ; AHKHID_GetInputData chops off 24 bytes - match same output
 	}
 }
 
