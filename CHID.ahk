@@ -211,7 +211,7 @@ Class CHID {
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
 		*/
-		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS")
+		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
 		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
@@ -236,6 +236,7 @@ Class CHID {
 		);
 		*/
 		ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS[" ValueCapsLength "]")
+		;ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS")
 		r := DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps[], "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0

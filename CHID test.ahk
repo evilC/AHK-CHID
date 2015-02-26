@@ -127,11 +127,15 @@ InputMsg(wParam, lParam) {
 		; Get Preparsed Data
 		ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+		
+		; Decode button states
 		ret := HID.HidP_GetCaps(PreparsedData, Caps)
-
+		;ToolTip % Caps.NumberInputButtonCaps
 		if (Caps.NumberInputButtonCaps) {
+			; ToDo: Loop through pButtonCaps[x] - Caps.NumberInputButtonCaps might not be 1
 			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-			btns := (Range:=pButtonCaps.Range).UsageMax - Range.UsageMin + 1
+			;btns := (Range:=pButtonCaps.Range).UsageMax - Range.UsageMin + 1
+			btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
 			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
@@ -142,8 +146,19 @@ InputMsg(wParam, lParam) {
 				}
 				s .= UsageList[A_Index]
 			}
-			ToolTip % "Pressed Buttons: " s
+			;ToolTip % "Pressed Buttons: " s
 		}
+		
+		; Decode Axis States
+		;ToolTip % Caps.NumberInputValueCaps
+		if (Caps.NumberInputValueCaps){
+			SoundBeep
+			ret := HID.HidP_GetValueCaps(0, ValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+			
+			;ToolTip % ret
+			ToolTip % "pg:" ValueCaps[1].UsagePage
+		}
+		
 		Gui,ListView,lvDLDBG
         ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))
 		LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize-24, Bin2Hex(pRawInput[]+24, pcbSize-24)) ; AHKHID_GetInputData chops off 24 bytes - match same output
