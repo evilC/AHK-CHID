@@ -130,26 +130,19 @@ InputMsg(wParam, lParam) {
 		ret := HID.HidP_GetCaps(PreparsedData, Caps)
 
 		if (Caps.NumberInputButtonCaps) {
-			; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
 			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
 			btns := (Range:=pButtonCaps.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
-			;ToolTip % ret ; all good to this point
-
-			;ToolTip % pRawInput.hid.dwSizeHid
-			;ToolTip % sizeof(pRawInput.hid.bRawData)Caps.Usagep
-			;ret := HID.HidP_GetUsages(0, Caps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
-			;~ ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData.1[""], pRawInput.hid.dwSizeHid)
 			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
-			;MsgBox % "UsagePage: " pButtonCaps.UsagePage "`nUsageLength: " UsageLength "`nReport: " pRawInput.hid.bRawData "`nSize: " pRawInput.hid.dwSizeHid
-			;ToolTip % UsageLength
-			;if (pButtonCaps.UsagePage=3)
-			;MsgBox % "Page: " UsageLength ;pButtonCaps.UsagePage ": " UsageLength
-		
-			ToolTip % UsageLength "`n" pButtonCaps.UsagePage "`n" ret "`n" ErrorLevel
-			Loop % UsageLength
-				MsgBox % NumGet(&UsageList,0, "UShort")
+			s := ""
+			Loop % UsageLength {
+				if (A_Index > 1){
+					s .= ","
+				}
+				s .= UsageList[A_Index]
+			}
+			ToolTip % "Pressed Buttons: " s
 		}
 		Gui,ListView,lvDLDBG
         ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))

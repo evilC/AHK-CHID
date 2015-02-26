@@ -127,6 +127,7 @@ Class CHID {
 					Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 				} else if (Command = this.RIDI_PREPARSEDDATA){
+					; Preparsed data seems to be a binary blob - no point in using _Struct.
 					VarSetCapacity(Data, Size)
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", &Data, "UInt*", Size)
 				}
@@ -144,7 +145,6 @@ Class CHID {
 	}
 	
 	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
-		static staticvar,init:=VarSetCapacity(staticvar,1000)
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
 		
@@ -163,7 +163,6 @@ Class CHID {
 		}
 		if (pcbSize){
 			pData := new _Struct(WinStructs.RAWINPUT)
-			;~ ObjSetCapacity(pData,"`a",pcbSize),pData[""]:=ObjGetAddress(pData,"`a")
 			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
 		} else {
 			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader )
@@ -213,7 +212,6 @@ Class CHID {
 		);
 		*/
 		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS")
-		;r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
@@ -266,12 +264,8 @@ Class CHID {
 		);
 		*/
 		
-		;UsageList := new _Struct("UShort[128]")
-		VarSetCapacity(UsageList, 256, 0)
-		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", UsageList[], "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
-		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", UsageList[], "Uint*", UsageLength, "Ptr", PreparsedData[], "Char*", &Report, "Uint*", ReportLength)
-		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", PreparsedData[], "Char*", &Report, "Uint*", ReportLength)
-		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "PTR", Report, "Uint", ReportLength)
+		UsageList := new _Struct("UShort[128]")
+		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList[], "Uint*", UsageLength, "Ptr", &PreparsedData, "PTR", Report, "Uint", ReportLength)
 		res := r
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
