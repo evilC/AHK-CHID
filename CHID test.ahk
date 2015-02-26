@@ -43,7 +43,9 @@ Gui, Show
 HID := new CHID()
 pRawInputDevices := new _Struct(WinStructs.RAWINPUTDEVICE)
 pRawInputDevices.usUsagePage := 1
-pRawInputDevices.usUsage := 4
+;~ pRawInputDevices.usUsage := 4
+pRawInputDevices.usUsage := 5
+pRawInputDevices.dwFlags |= 0x00002000 ;RIDEV_DEVNOTIFY
 pRawInputDevices.hwndTarget := A_ScriptHwnd
 pRawInputDevices.dwFlags := 0
 HID.RegisterRawInputDevices(pRawInputDevices, 1, sizeof(WinStructs.RAWINPUTDEVICE))
@@ -83,8 +85,9 @@ InputMsg(wParam, lParam) {
 		Usage := AHKHID_GetDevInfo(h, DI_HID_USAGE, True)
 		
 		; Only show vJoy stick
-		if (vid != 0x1234){
-			;return
+		;~ if (vid != 0x1234){
+		if (vid != 0x45E){
+			return
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
@@ -101,15 +104,17 @@ InputMsg(wParam, lParam) {
 	
 	if (pRawInput.header.dwType = HID.RIM_TYPEHID){
 		DevSize := HID.GetRawInputDeviceInfo(handle)
-		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, pData, DevSize)
+		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, pData, DevSize)
 		vid := pData.hid.dwVendorId
 		pid := pData.hid.dwProductId
 		UsagePage := pData.hid.usUsagePage
 		Usage := pData.hid.usUsage
 		
+		
 		; Only show vJoy stick
-		if (vid != 0x1234){
-			;return
+		;~ if (vid != 0x1234){
+		if (vid != 0x45E){
+			return
 		}
         vid := Format("{:x}",vid)
         pid := Format("{:x}",pid)
@@ -123,13 +128,28 @@ InputMsg(wParam, lParam) {
 		ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
 		ret := HID.HidP_GetCaps(PreparsedData, Caps)
+
 		if (Caps.NumberInputButtonCaps) {
 			; next line makes code CRASH. Same code is used @ line 63, so why does it not work here?
-			HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-			btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+			btns := (Range:=pButtonCaps.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
-			;ret := HID.HidP_GetUsages(0, UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
+			;ToolTip % ret ; all good to this point
+
+			;ToolTip % pRawInput.hid.dwSizeHid
+			;ToolTip % sizeof(pRawInput.hid.bRawData)Caps.Usagep
+			;ret := HID.HidP_GetUsages(0, Caps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData, pRawInput.hid.dwSizeHid)
+			;~ ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData.1[""], pRawInput.hid.dwSizeHid)
+			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+			;MsgBox % "UsagePage: " pButtonCaps.UsagePage "`nUsageLength: " UsageLength "`nReport: " pRawInput.hid.bRawData "`nSize: " pRawInput.hid.dwSizeHid
+			;ToolTip % UsageLength
+			;if (pButtonCaps.UsagePage=3)
+			;MsgBox % "Page: " UsageLength ;pButtonCaps.UsagePage ": " UsageLength
+		
+			ToolTip % UsageLength "`n" pButtonCaps.UsagePage "`n" ret "`n" ErrorLevel
+			Loop % UsageLength
+				MsgBox % NumGet(&UsageList,0, "UShort")
 		}
 		Gui,ListView,lvDLDBG
         ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))

@@ -11,7 +11,8 @@ Class CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
+
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
@@ -131,7 +132,7 @@ Class CHID {
 				}
 			} else {
 				; No Struct passed in
-				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
+				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", 0, "UInt*", Size)
 			}
 		;}
 		If (r = -1) Or ErrorLevel {
@@ -211,8 +212,8 @@ Class CHID {
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
 		*/
-		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
-		;r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", &ButtonCapsLength, "Ptr", &PreparsedData)
+		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS")
+		;r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
@@ -265,14 +266,21 @@ Class CHID {
 		);
 		*/
 		
-		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", &UsageList, "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		;UsageList := new _Struct("UShort[128]")
+		VarSetCapacity(UsageList, 256, 0)
+		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", UsageList[], "Uint*", &UsageLength, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort*", UsageList[], "Uint*", UsageLength, "Ptr", PreparsedData[], "Char*", &Report, "Uint*", ReportLength)
+		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", PreparsedData[], "Char*", &Report, "Uint*", ReportLength)
+		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "PTR", Report, "Uint", ReportLength)
+		res := r
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
 			r := -1
 		}
 		If (r = -1) Or ErrorLevel {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
+			clipboard := res
+			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " CHID.errmsg(A_LastError) "`nresult: " res
 		}
 		r := UsageList
 		return r
@@ -294,7 +302,7 @@ Class CHID {
 		);
 		*/
 		
-		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", &UsageValue, "Ptr", &PreparsedData, "Char*", &Report, "Uint*", ReportLength)
+		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", UsageValue, "Ptr", &PreparsedData, "Char*", Report, "Uint*", ReportLength)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {
