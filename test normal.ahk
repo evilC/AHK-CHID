@@ -1,6 +1,7 @@
 ; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #include <CHID>
 #singleinstance force
+SetBatchLines -1
 
 Gui +Resize -MaximizeBox -MinimizeBox
 Gui, Add, Listview, w651 h200 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
@@ -112,12 +113,14 @@ Loop % NumDevices {
 return
 
 InputMsg(wParam, lParam) {
+    Critical
     global HID
     global SelectedDevice
     global hAxes, hButtons
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
+    
 	if (-1 = ret := HID.GetRawInputData(lParam,,pRawInput, pcbSize))
         return
     handle := pRawInput.header.hDevice
@@ -133,12 +136,16 @@ InputMsg(wParam, lParam) {
 
     if (pRawInput.header.dwType = HID.RIM_TYPEHID){
 		; Get Preparsed Data
+        QPX(true)
 		ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+        Ti := QPX(false)
+        ToolTip % "Time:" Ti
 		
 		; Decode button states
 		ret := HID.HidP_GetCaps(PreparsedData, Caps)
 		;ToolTip % Caps.NumberInputButtonCaps
+		s := "Pressed Buttons:`n`n"
 		if (Caps.NumberInputButtonCaps) {
 			; ToDo: Loop through pButtonCaps[x] - Caps.NumberInputButtonCaps might not be 1
 			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
@@ -147,15 +154,15 @@ InputMsg(wParam, lParam) {
 			UsageLength := btns
 			
 			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
-			s := "Pressed Buttons:`n`n"
 			Loop % UsageLength {
 				if (A_Index > 1){
 					s .= ","
 				}
 				s .= UsageList[A_Index]
+				;s .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
 			}
-            GuiControl,,% hButtons, % s
 		}
+        GuiControl,,% hButtons, % s
 		
         s:= "Axes:`n`n"
 		; Decode Axis States
@@ -164,13 +171,13 @@ InputMsg(wParam, lParam) {
 			
 			Loop % Caps.NumberInputValueCaps {
 				r := HID.HidP_GetUsageValue(0, ValueCaps[A_Index].UsagePage, 0, ValueCaps[A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
-				value := NumGet(value,0,"Uint")
+				value := NumGet(value,0,"Short")
 				s .= HID.AxisHexToName[ValueCaps[A_Index].Range.UsageMin] " axis: " value "`n"
 			}
-            GuiControl,,% hAxes, % s
-
 		}
+        GuiControl,,% hAxes, % s
 	}
+
 }
 
 SelectDevice:
