@@ -12,7 +12,9 @@ Class CHID {
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
-
+	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz: 0x35, sl1:0x36, sl2:0x37} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	static AxisHexToName := {0x30: "x", 0x31: "y", 0x32: "z", 0x33: "rx", 0x34: "ry", 0x35: "rz", 0x36: "sl1", 0x37: "sl2"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	
 	; Proprietatary Constants
     static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
@@ -266,7 +268,7 @@ Class CHID {
 		*/
 		
 		UsageList := new _Struct("UShort[128]")
-		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList[], "Uint*", UsageLength, "Ptr", &PreparsedData, "PTR", Report, "Uint", ReportLength)
+		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList[], "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
 		res := r
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
@@ -297,7 +299,10 @@ Class CHID {
 		);
 		*/
 		
-		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", UsageValue, "Ptr", &PreparsedData, "Char*", Report, "Uint*", ReportLength)
+		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", UsageValue, "Ptr", &PreparsedData, "Char*", Report, "Uint*", ReportLength)
+		VarSetCapacity(UsageValue, 4)
+		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", &Report, "Uint", ReportLength) ; invalid report id, but no boom
+		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
 		if (r = this.HIDP_STATUS_SUCCESS){
 			r := 0
 		} else {

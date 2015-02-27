@@ -146,19 +146,23 @@ InputMsg(wParam, lParam) {
 				}
 				s .= UsageList[A_Index]
 			}
-			;ToolTip % "Pressed Buttons: " s
+			if (s != ""){
+				s := "Pressed Buttons: " s "`n`n"
+			}
 		}
 		
 		; Decode Axis States
-		;ToolTip % Caps.NumberInputValueCaps
 		if (Caps.NumberInputValueCaps){
-			SoundBeep
 			ret := HID.HidP_GetValueCaps(0, ValueCaps, Caps.NumberInputValueCaps, PreparsedData)
 			
-			;ToolTip % ret
-			ToolTip % "pg:" ValueCaps[1].UsagePage
+			Loop % Caps.NumberInputValueCaps {
+				r := HID.HidP_GetUsageValue(0, ValueCaps[A_Index].UsagePage, 0, ValueCaps[A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+				value := NumGet(value,0,"Uint")
+				s .= HID.AxisHexToName[ValueCaps[A_Index].Range.UsageMin] " axis: " value "`n"
+			}
 		}
 		
+		ToolTip % s
 		Gui,ListView,lvDLDBG
         ;LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize, Bin2Hex(&pRawInput, pcbSize))
 		LV_Add("", msg_id, time, vid, pid, UsagePage, Usage, btns, pcbSize-24, Bin2Hex(pRawInput[]+24, pcbSize-24)) ; AHKHID_GetInputData chops off 24 bytes - match same output
