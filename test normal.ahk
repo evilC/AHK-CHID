@@ -127,6 +127,8 @@ InputMsg(wParam, lParam) {
     global hAxes, hButtons
     global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 	
+    QPX(true)
+
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
     
@@ -150,8 +152,6 @@ InputMsg(wParam, lParam) {
         ; All but size returning removed: 7-8
         ; Size returning removed: 6-7
         
-		;ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
-        ;VarSetCapacity(PreparsedData, ppSize)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 		
         ; HidP_GetCaps
@@ -202,17 +202,18 @@ InputMsg(wParam, lParam) {
             ; HidP_GetUsageValue Loop
             ; Values for 6-axis xbox pad
             ; Pre Optimization: ~108000
-            QPX(true)
+            ; No real change
+            VarSetCapacity(value, 4)
 			Loop % CapsArray[handle].NumberInputValueCaps {
 
-				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+				r := HID.HidP_GetUsageValueNew(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
 				s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
-            Ti := QPX(false)
-            ToolTip % "Time:" Ti
 		}
         GuiControl,,% hAxes, % s
+        Ti := QPX(false)
+        ToolTip % "Time:" Ti
 	}
 
 }
