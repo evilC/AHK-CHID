@@ -23,7 +23,7 @@ Gui, Show,, Joystick Info
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
-DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO)
+HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO, 0, DevSize)
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
@@ -56,7 +56,7 @@ Loop % NumDevices {
         RegRead, human_name, HKLM, % key, OEMName
     }
     ; Decode capabilities
-    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
+    HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
     VarSetCapacity(PreparsedData, ppSize)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
@@ -141,6 +141,8 @@ InputMsg(wParam, lParam) {
         QPX(true)
         ; Pre streamlining - 14/15
         ; All but size returning removed - 7/8
+        ; Size returning removed - 6/7
+        
 		;ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
         ;VarSetCapacity(PreparsedData, ppSize)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)

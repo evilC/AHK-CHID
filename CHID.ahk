@@ -119,14 +119,14 @@ Class CHID {
 		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
 		);
 		*/
-		r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
-		return Size
+		return DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
+		/*
 		If (r = -1) Or ErrorLevel {
 			soundbeep
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
 			Return -1
 		}
-		return Size
+		*/
 	}
 	
 	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
