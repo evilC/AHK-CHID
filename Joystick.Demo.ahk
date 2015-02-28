@@ -3,8 +3,11 @@
 #singleinstance force
 SetBatchLines -1
 
+GUI_WIDTH := 651
+
 Gui +Resize -MaximizeBox -MinimizeBox
-Gui, Add, Listview, w651 h200 vlvDL gSelectDevice AltSubmit +Grid,#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+Gui, Add, Text, % "xm Center w" GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that stick."
+Gui, Add, Listview, % "w" GUI_WIDTH " h200 vlvDL gSelectDevice AltSubmit +Grid",#|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
 LV_Modifycol(1,20)
 LV_Modifycol(2,180)
 LV_Modifycol(3,40)
@@ -15,8 +18,10 @@ LV_Modifycol(7,50)
 LV_Modifycol(8,50)
 LV_Modifycol(9,50)
 
-Gui, Add, Text, % "hwndhAxes w300 h200 xm y220"
-Gui, Add, Text, % "hwndhButtons w300 h200 x331 y220"
+Gui, Add, Text, % "hwndhAxes w300 h200 xm y240"
+Gui, Add, Text, % "hwndhButtons w300 h200 x331 y240"
+Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
+Gui, Add, Text, % "hwndhProcessTime w50 ys"
 
 Gui, Show,, Joystick Info
 
@@ -28,10 +33,12 @@ AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
 SelectedDevice := 0
+; Store data that does not change for WM_INPUT calls
 CapsArray := {}
 ButtonCapsArray := {}
 AxisCapsArray := {}
 ValueCapsArray := {}
+; _Struct arrays too slow - cache values.
 AxesArray := {}
 PageArray := {}
 
@@ -130,7 +137,7 @@ InputMsg(wParam, lParam) {
     Critical
     global HID
     global SelectedDevice
-    global hAxes, hButtons
+    global hAxes, hButtons, hProcessTime
     global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray, AxesArray, PageArray
 	
     QPX(true)
@@ -169,7 +176,7 @@ InputMsg(wParam, lParam) {
         
 		;ret := HID.HidP_GetCaps(PreparsedData, Caps[])
         
-		s := "Pressed Buttons:`n`n"
+		btnstring := "Pressed Buttons:`n`n"
 		if (CapsArray[handle].NumberInputButtonCaps) {
 			; ToDo: Loop through ButtonCapsArray[handle][x] - Caps.NumberInputButtonCaps might not be 1
             ; HidP_GetButtonCaps
@@ -189,16 +196,15 @@ InputMsg(wParam, lParam) {
             ;NumPut(0,&RawData)
 			Loop % UsageLength {
 				if (A_Index > 1){
-					s .= ","
+					btnstring .= ","
 				}
-				s .= UsageList[A_Index]
-				;s .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
-                ;s .= NumGet(&UsageList,(A_Index-1)*4,"UShort")
+				btnstring .= UsageList[A_Index]
+				;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+                ;btnstring .= NumGet(&UsageList,(A_Index-1)*4,"UShort")
 			}
 		}
-        GuiControl,,% hButtons, % s
 		
-        s:= "Axes:`n`n"
+        axisstring:= "Axes:`n`n"
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
             ; HidP_GetValueCaps
@@ -218,14 +224,15 @@ InputMsg(wParam, lParam) {
 				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
 				r := HID.HidP_GetUsageValue(0, PageArray[handle][A_Index], 0, AxesArray[handle][A_Index], value, PreparsedData, RawData, Size)
 				value := NumGet(value,0,"Short")
-				;s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
-				;s .= HID.AxisHexToName[Range.UsageMin] " axis: " value "`n"
-				s .= HID.AxisHexToName[AxesArray[handle][A_Index]] " axis: " value "`n"
+				;axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
+				;axisstring .= HID.AxisHexToName[Range.UsageMin] " axis: " value "`n"
+				axisstring .= HID.AxisHexToName[AxesArray[handle][A_Index]] " axis: " value "`n"
 			}
 		}
         Ti := QPX(false)
-        ToolTip % "Process Time (Inc UI Ouptut): " Ti
-        GuiControl,,% hAxes, % s
+        GuiControl,,% hButtons, % btnstring
+        GuiControl,,% hAxes, % axisstring
+        GuiControl,,% hProcessTime, % Ti
 	}
 
 }
