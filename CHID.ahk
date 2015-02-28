@@ -168,21 +168,10 @@ Class CHID {
 		  _In_   PHIDP_PREPARSED_DATA PreparsedData,
 		  _Out_  PHIDP_CAPS Capabilities
 		);
+		returns HIDP_STATUS_ value, eg HIDP_STATUS_SUCCESS
 		*/
-		Capabilities := new _Struct("WinStructs.HIDP_CAPS")
-		r := DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities[])
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		;} else if (r = this.HIDP_STATUS_INVALID_PREPARSED_DATA){
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			SoundBeep
-			;~ OutputDebug % ErrMsg()
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		return r
+		;Capabilities := new _Struct("WinStructs.HIDP_CAPS")
+		return DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities)
 	}
 	
 	HidP_GetButtonCaps(ReportType, ByRef ButtonCaps, ByRef ButtonCapsLength, ByRef PreparsedData){

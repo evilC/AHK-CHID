@@ -28,6 +28,7 @@ AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
 SelectedDevice := 0
+CapsArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
@@ -59,21 +60,22 @@ Loop % NumDevices {
     HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
     VarSetCapacity(PreparsedData, ppSize)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
-    ret := HID.HidP_GetCaps(PreparsedData, Caps)
+    CapsArray[handle] := new _Struct("WinStructs.HIDP_CAPS")
+    ret := HID.HidP_GetCaps(PreparsedData, CapsArray[handle][])
     Axes := ""
     Hats := 0
     btns := 0
 
     ; Buttons
-    if (Caps.NumberInputButtonCaps) {
-        HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
+    if (CapsArray[handle].NumberInputButtonCaps) {
+        HID.HidP_GetButtonCaps(0, pButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
         btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
     }
     ; Axes / Hats
-    if (Caps.NumberInputValueCaps) {
-        HID.HidP_GetValueCaps(0, pValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+    if (CapsArray[handle].NumberInputValueCaps) {
+        HID.HidP_GetValueCaps(0, pValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
         AxisCaps := {}
-        Loop % Caps.NumberInputValueCaps {
+        Loop % CapsArray[handle].NumberInputValueCaps {
             Type := (Range:=pValueCaps[A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
@@ -118,7 +120,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons
-    global PreparsedData, ppSize
+    global PreparsedData, ppSize, CapsArray
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
@@ -138,25 +140,31 @@ InputMsg(wParam, lParam) {
 
     if (pRawInput.header.dwType = HID.RIM_TYPEHID){
 		; Get Preparsed Data
-        QPX(true)
-        ; Pre streamlining - 14/15
-        ; All but size returning removed - 7/8
-        ; Size returning removed - 6/7
+        ; GetRawInputDeviceInfo
+        ; Pre Optimization: 14-15
+        ; All but size returning removed: 7-8
+        ; Size returning removed: 6-7
         
 		;ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
         ;VarSetCapacity(PreparsedData, ppSize)
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+		
+        ; HidP_GetCaps
+        ; 
+        QPX(true)
+		; Decode button states
+        ; Pre Optimization: 1100-1300
+        ; Struct static: 200-350
+        ; Use Caps decoded on startup: ~0
+        
+		;ret := HID.HidP_GetCaps(PreparsedData, Caps[])
         Ti := QPX(false)
         ToolTip % "Time:" Ti
-		
-		; Decode button states
-		ret := HID.HidP_GetCaps(PreparsedData, Caps)
-		;ToolTip % Caps.NumberInputButtonCaps
+        
 		s := "Pressed Buttons:`n`n"
-		if (Caps.NumberInputButtonCaps) {
+		if (CapsArray[handle].NumberInputButtonCaps) {
 			; ToDo: Loop through pButtonCaps[x] - Caps.NumberInputButtonCaps might not be 1
-			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, Caps.NumberInputButtonCaps, PreparsedData)
-			;btns := (Range:=pButtonCaps.Range).UsageMax - Range.UsageMin + 1
+			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
 			btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
@@ -177,10 +185,10 @@ InputMsg(wParam, lParam) {
 		
         s:= "Axes:`n`n"
 		; Decode Axis States
-		if (Caps.NumberInputValueCaps){
-			ret := HID.HidP_GetValueCaps(0, ValueCaps, Caps.NumberInputValueCaps, PreparsedData)
+		if (CapsArray[handle].NumberInputValueCaps){
+			ret := HID.HidP_GetValueCaps(0, ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
 			
-			Loop % Caps.NumberInputValueCaps {
+			Loop % CapsArray[handle].NumberInputValueCaps {
 				r := HID.HidP_GetUsageValue(0, ValueCaps[A_Index].UsagePage, 0, ValueCaps[A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
 				s .= HID.AxisHexToName[ValueCaps[A_Index].Range.UsageMin] " axis: " value "`n"
