@@ -220,12 +220,15 @@ InputMsg(wParam, lParam) {
             RawData := pRawInput.hid.bRawData[""]
             Size := pRawInput.hid.dwSizeHid
 
+            ;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
+                if (PageArray[handle][A_Index] != 1){
+                    ; Ignore things not on the page we subscribed to.
+                    continue
+                }
 				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
 				r := HID.HidP_GetUsageValue(0, PageArray[handle][A_Index], 0, AxesArray[handle][A_Index], value, PreparsedData, RawData, Size)
 				value := NumGet(value,0,"Short")
-				;axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
-				;axisstring .= HID.AxisHexToName[Range.UsageMin] " axis: " value "`n"
 				axisstring .= HID.AxisHexToName[AxesArray[handle][A_Index]] " axis: " value "`n"
 			}
 		}
@@ -235,6 +238,11 @@ InputMsg(wParam, lParam) {
         GuiControl,,% hProcessTime, % Ti
 	}
 
+}
+
+; Shorthand way of formatting something as 0x0 format Hex
+FormatHex(val){
+    return Format("{:#x}", val+0)
 }
 
 SelectDevice:
