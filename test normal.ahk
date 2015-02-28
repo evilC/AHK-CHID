@@ -32,6 +32,8 @@ CapsArray := {}
 ButtonCapsArray := {}
 AxisCapsArray := {}
 ValueCapsArray := {}
+AxesArray := {}
+PageArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
@@ -79,8 +81,12 @@ Loop % NumDevices {
     if (CapsArray[handle].NumberInputValueCaps) {
         ValueCapsArray[handle] := new _Struct("WinStructs.HIDP_VALUE_CAPS[" CapsArray[handle].NumberInputValueCaps "]")
         HID.HidP_GetValueCaps(0, ValueCapsArray[handle][], CapsArray[handle].NumberInputValueCaps, PreparsedData)
+        AxesArray[handle] := {}
+        PageArray[handle] := {}
         AxisCaps := {}
         Loop % CapsArray[handle].NumberInputValueCaps {
+            AxesArray[handle][A_Index] := ValueCapsArray[handle][A_Index].Range.UsageMin
+            PageArray[handle][A_Index] := ValueCapsArray[handle][A_Index].UsagePage
             Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
@@ -125,7 +131,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons
-    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
+    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray, AxesArray, PageArray
 	
     QPX(true)
 
@@ -199,21 +205,27 @@ InputMsg(wParam, lParam) {
             ; Pre Optimization: ~7500
             ; Value Caps decoded on startup: ~0
 			
-            ; HidP_GetUsageValue Loop
-            ; Values for 6-axis xbox pad
+            ; HidP_GetUsageValue Loop (Values for 6-axis xbox pad)
             ; Pre Optimization: ~108000
-            ; No real change
+            ; RawData and Size retrieved only once: ~106000
+            ; Page and Min retrieved only once: ~50000
+            ; Axes (UsageMin) and Page cached: ~1600
             VarSetCapacity(value, 4)
-			Loop % CapsArray[handle].NumberInputValueCaps {
+            RawData := pRawInput.hid.bRawData[""]
+            Size := pRawInput.hid.dwSizeHid
 
-				r := HID.HidP_GetUsageValueNew(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+			Loop % CapsArray[handle].NumberInputValueCaps {
+				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
+				r := HID.HidP_GetUsageValue(0, PageArray[handle][A_Index], 0, AxesArray[handle][A_Index], value, PreparsedData, RawData, Size)
 				value := NumGet(value,0,"Short")
-				s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
+				;s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
+				;s .= HID.AxisHexToName[Range.UsageMin] " axis: " value "`n"
+				s .= HID.AxisHexToName[AxesArray[handle][A_Index]] " axis: " value "`n"
 			}
 		}
-        GuiControl,,% hAxes, % s
         Ti := QPX(false)
-        ToolTip % "Time:" Ti
+        ToolTip % "Process Time (Inc UI Ouptut): " Ti
+        GuiControl,,% hAxes, % s
 	}
 
 }

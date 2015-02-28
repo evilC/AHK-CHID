@@ -237,52 +237,7 @@ Class CHID {
 		);
 		*/
 		
-		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", UsageValue, "Ptr", &PreparsedData, "Char*", Report, "Uint*", ReportLength)
-		VarSetCapacity(UsageValue, 4)
-		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", &Report, "Uint", ReportLength) ; invalid report id, but no boom
-		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		r := UsageValue
-		return r
-	}
-	
-	HidP_GetUsageValueNew(ReportType, UsagePage, LinkCollection, Usage, ByRef UsageValue, ByRef PreparsedData, ByRef Report, ReportLength){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539748%28v=vs.85%29.aspx
-		
-		NTSTATUS __stdcall HidP_GetUsageValue(
-		  _In_   HIDP_REPORT_TYPE ReportType,
-		  _In_   USAGE UsagePage,
-		  _In_   USHORT LinkCollection,
-		  _In_   USAGE Usage,
-		  _Out_  PULONG UsageValue,
-		  _In_   PHIDP_PREPARSED_DATA PreparsedData,
-		  _In_   PCHAR Report,
-		  _In_   ULONG ReportLength
-		);
-		*/
-		
-		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Uint*", UsageValue, "Ptr", &PreparsedData, "Char*", Report, "Uint*", ReportLength)
-		;VarSetCapacity(UsageValue, 4)
-		;r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", &Report, "Uint", ReportLength) ; invalid report id, but no boom
-		r := DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		r := UsageValue
-		return r
+		return DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
 	}
 }
 
