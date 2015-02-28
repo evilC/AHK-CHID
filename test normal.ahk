@@ -30,6 +30,8 @@ DevData := []
 SelectedDevice := 0
 CapsArray := {}
 ButtonCapsArray := {}
+AxisCapsArray := {}
+ValueCapsArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
@@ -75,10 +77,11 @@ Loop % NumDevices {
     }
     ; Axes / Hats
     if (CapsArray[handle].NumberInputValueCaps) {
-        HID.HidP_GetValueCaps(0, pValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
+        ValueCapsArray[handle] := new _Struct("WinStructs.HIDP_VALUE_CAPS[" CapsArray[handle].NumberInputValueCaps "]")
+        HID.HidP_GetValueCaps(0, ValueCapsArray[handle][], CapsArray[handle].NumberInputValueCaps, PreparsedData)
         AxisCaps := {}
         Loop % CapsArray[handle].NumberInputValueCaps {
-            Type := (Range:=pValueCaps[A_Index].Range).UsageMin
+            Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
                 Hats++
@@ -122,7 +125,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons
-    global PreparsedData, ppSize, CapsArray, ButtonCapsArray
+    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
@@ -168,9 +171,6 @@ InputMsg(wParam, lParam) {
             ; No point making struct static as would need array of 8
             ; Button Caps decoded on startup: ~0
             
-            QPX(true)
-            Ti := QPX(false)
-            ToolTip % "Time:" Ti
 			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
@@ -191,12 +191,17 @@ InputMsg(wParam, lParam) {
         s:= "Axes:`n`n"
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
-			ret := HID.HidP_GetValueCaps(0, ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
+            ; HidP_GetValueCaps
+            ; Pre Optimization: ~ 7500
+            ; Value Caps decoded on startup: ~0
+            QPX(true)
+            Ti := QPX(false)
+            ToolTip % "Time:" Ti
 			
 			Loop % CapsArray[handle].NumberInputValueCaps {
-				r := HID.HidP_GetUsageValue(0, ValueCaps[A_Index].UsagePage, 0, ValueCaps[A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
-				s .= HID.AxisHexToName[ValueCaps[A_Index].Range.UsageMin] " axis: " value "`n"
+				s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
 		}
         GuiControl,,% hAxes, % s

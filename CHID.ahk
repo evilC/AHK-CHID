@@ -199,18 +199,7 @@ Class CHID {
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
 		*/
-		ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS[" ValueCapsLength "]")
-		;ValueCaps := new _Struct("WinStructs.HIDP_VALUE_CAPS")
-		r := DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps[], "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		return r
+		return DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps, "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
 	}
 	
 	HidP_GetUsages(ReportType, UsagePage, LinkCollection, ByRef UsageList, ByRef UsageLength, ByRef PreparsedData, ByRef Report, ReportLength){
