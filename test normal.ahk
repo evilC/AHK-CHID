@@ -23,7 +23,7 @@ Gui, Show,, Joystick Info
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
-DevSize := HID.GetRawInputDeviceInfoNew(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO)
+DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO)
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
@@ -40,7 +40,7 @@ Loop % NumDevices {
     
     ; Get Device Info
     Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
-	HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
+	HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
     DevData[A_Index] := Data
     
     ; Find Human name from registry
@@ -56,9 +56,9 @@ Loop % NumDevices {
         RegRead, human_name, HKLM, % key, OEMName
     }
     ; Decode capabilities
-    ppSize := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA)
+    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
     VarSetCapacity(PreparsedData, ppSize)
-    ret := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
     Axes := ""
     Hats := 0
@@ -141,9 +141,9 @@ InputMsg(wParam, lParam) {
         QPX(true)
         ; Pre streamlining - 14/15
         ; All but size returning removed - 7/8
-		;ppSize := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA)
+		;ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
         ;VarSetCapacity(PreparsedData, ppSize)
-		ret := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
         Ti := QPX(false)
         ToolTip % "Time:" Ti
 		
