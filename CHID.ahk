@@ -185,17 +185,7 @@ Class CHID {
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
 		*/
-		ButtonCaps := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" ButtonCapsLength "]")
-		r := DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps[], "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		return r
+		return DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps, "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 	}
 	
 	HidP_GetValueCaps(ReportType, ByRef ValueCaps, ByRef ValueCapsLength, ByRef PreparsedData){

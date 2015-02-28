@@ -29,6 +29,7 @@ DevData := []
 
 SelectedDevice := 0
 CapsArray := {}
+ButtonCapsArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
@@ -68,8 +69,9 @@ Loop % NumDevices {
 
     ; Buttons
     if (CapsArray[handle].NumberInputButtonCaps) {
-        HID.HidP_GetButtonCaps(0, pButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
-        btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+        ButtonCapsArray[handle] := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" CapsArray[handle].NumberInputButtonCaps "]")
+        HID.HidP_GetButtonCaps(0, ButtonCapsArray[handle][], CapsArray[handle].NumberInputButtonCaps, PreparsedData)
+        btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
     }
     ; Axes / Hats
     if (CapsArray[handle].NumberInputValueCaps) {
@@ -120,7 +122,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons
-    global PreparsedData, ppSize, CapsArray
+    global PreparsedData, ppSize, CapsArray, ButtonCapsArray
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
@@ -151,27 +153,30 @@ InputMsg(wParam, lParam) {
 		
         ; HidP_GetCaps
         ; 
-        QPX(true)
 		; Decode button states
         ; Pre Optimization: 1100-1300
         ; Struct static: 200-350
         ; Use Caps decoded on startup: ~0
         
 		;ret := HID.HidP_GetCaps(PreparsedData, Caps[])
-        Ti := QPX(false)
-        ToolTip % "Time:" Ti
         
 		s := "Pressed Buttons:`n`n"
 		if (CapsArray[handle].NumberInputButtonCaps) {
-			; ToDo: Loop through pButtonCaps[x] - Caps.NumberInputButtonCaps might not be 1
-			ret := HID.HidP_GetButtonCaps(0, pButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
-			btns := (Range:=pButtonCaps.1.Range).UsageMax - Range.UsageMin + 1
+			; ToDo: Loop through ButtonCapsArray[handle][x] - Caps.NumberInputButtonCaps might not be 1
+            ; HidP_GetButtonCaps
+            ; Pre Optimization: ~ 6500
+            ; No point making struct static as would need array of 8
+            ; Button Caps decoded on startup: ~0
+            
+            QPX(true)
+            Ti := QPX(false)
+            ToolTip % "Time:" Ti
+			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
-			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
             ;VarSetCapacity(RawData, 4)
             ;NumPut(0,&RawData)
-			;ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, RawData, pRawInput.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
 					s .= ","
