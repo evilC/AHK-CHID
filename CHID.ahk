@@ -120,13 +120,14 @@ Class CHID {
 		);
 		*/
 		
-		if (Command = -1){
-			Command := this.RIDI_DEVICEINFO
-		}
 		;if (Command = this.RIDI_DEVICEINFO){
 			if (Size) {   ; RawInputDeviceList contains a struct, not a number
 				if (Command = this.RIDI_DEVICEINFO){
-					Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
+					;MsgBox % Data
+					;if (Data = 0){
+						;Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
+					;}
+					;r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 					r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data[], "UInt*", Size)
 				} else if (Command = this.RIDI_PREPARSEDDATA){
 					; Preparsed data seems to be a binary blob - no point in using _Struct.
@@ -138,6 +139,33 @@ Class CHID {
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", 0, "UInt*", Size)
 			}
 		;}
+		If (r = -1) Or ErrorLevel {
+			soundbeep
+			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
+			Return -1
+		}
+		return Size
+	}
+	
+	GetRawInputDeviceInfoNew(Device, Command := -1, ByRef Data := 0, ByRef Size := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
+		
+		UINT WINAPI GetRawInputDeviceInfo(
+		  _In_opt_     HANDLE hDevice,		// A handle to the raw input device. This comes from the lParam of the WM_INPUT message, from the hDevice member of RAWINPUTHEADER
+											// or from GetRawInputDeviceList.
+		  _In_         UINT uiCommand,		// Specifies what data will be returned in pData. This parameter can be one of the following values:
+											// RIDI_DEVICENAME 0x20000007 -		pData points to a string that contains the device name.
+											//									For this uiCommand only, the value in pcbSize is the character count (not the byte count).
+											// RIDI_DEVICEINFO 0x2000000b -		pData points to an RID_DEVICE_INFO structure.
+											// RIDI_PREPARSEDDATA 0x20000005 -	pData points to the previously parsed data.
+		  _Inout_opt_  LPVOID pData,		// A pointer to a buffer that contains the information specified by uiCommand.
+											// If uiCommand is RIDI_DEVICEINFO, set the cbSize member of RID_DEVICE_INFO to sizeof(RID_DEVICE_INFO) before calling GetRawInputDeviceInfo.
+		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
+		);
+		*/
+		r := DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
+		return Size
 		If (r = -1) Or ErrorLevel {
 			soundbeep
 			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%

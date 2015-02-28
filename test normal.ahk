@@ -23,8 +23,7 @@ Gui, Show,, Joystick Info
 HID := new CHID()
 NumDevices := HID.GetRawInputDeviceList()
 HID.GetRawInputDeviceList(DeviceList,NumDevices)
-DevSize := HID.GetRawInputDeviceInfo(DeviceList[1].hDevice)
-
+DevSize := HID.GetRawInputDeviceInfoNew(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO)
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 
@@ -40,7 +39,8 @@ Loop % NumDevices {
 	handle := DeviceList[A_Index].hDevice
     
     ; Get Device Info
-	HID.GetRawInputDeviceInfo(handle, ,Data, DevSize)
+    Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
+	HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
     DevData[A_Index] := Data
     
     ; Find Human name from registry
@@ -56,8 +56,9 @@ Loop % NumDevices {
         RegRead, human_name, HKLM, % key, OEMName
     }
     ; Decode capabilities
-    ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
-    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+    ppSize := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA)
+    VarSetCapacity(PreparsedData, ppSize)
+    ret := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
     ret := HID.HidP_GetCaps(PreparsedData, Caps)
     Axes := ""
     Hats := 0
@@ -117,6 +118,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons
+    global PreparsedData, ppSize
 	
     If (!pcbSize:=HID.GetRawInputData(lParam))
 		return
@@ -137,8 +139,11 @@ InputMsg(wParam, lParam) {
     if (pRawInput.header.dwType = HID.RIM_TYPEHID){
 		; Get Preparsed Data
         QPX(true)
-		ppSize := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA)
-		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, PreparsedData, ppSize)
+        ; Pre streamlining - 14/15
+        ; All but size returning removed - 7/8
+		;ppSize := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA)
+        ;VarSetCapacity(PreparsedData, ppSize)
+		ret := HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
         Ti := QPX(false)
         ToolTip % "Time:" Ti
 		
@@ -154,12 +159,16 @@ InputMsg(wParam, lParam) {
 			UsageLength := btns
 			
 			ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+            ;VarSetCapacity(RawData, 4)
+            ;NumPut(0,&RawData)
+			;ret := HID.HidP_GetUsages(0, pButtonCaps.UsagePage, 0, UsageList, UsageLength, PreparsedData, RawData, pRawInput.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
 					s .= ","
 				}
 				s .= UsageList[A_Index]
 				;s .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+                ;s .= NumGet(&UsageList,(A_Index-1)*4,"UShort")
 			}
 		}
         GuiControl,,% hButtons, % s
