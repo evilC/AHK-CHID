@@ -167,14 +167,18 @@ InputMsg(wParam, lParam) {
 		if (CapsArray[handle].NumberInputButtonCaps) {
 			; ToDo: Loop through ButtonCapsArray[handle][x] - Caps.NumberInputButtonCaps might not be 1
             ; HidP_GetButtonCaps
-            ; Pre Optimization: ~ 6500
+            ; Pre Optimization: ~6500
             ; No point making struct static as would need array of 8
             ; Button Caps decoded on startup: ~0
             
 			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
-			
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+            
+            ; HidP_GetUsages
+            ; Pre Optimization: ~4250
+            ; Static Struct: ~4000
+			static UsageList := new _Struct("UShort[128]")
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList[], UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
             ;VarSetCapacity(RawData, 4)
             ;NumPut(0,&RawData)
 			Loop % UsageLength {
@@ -192,17 +196,21 @@ InputMsg(wParam, lParam) {
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
             ; HidP_GetValueCaps
-            ; Pre Optimization: ~ 7500
+            ; Pre Optimization: ~7500
             ; Value Caps decoded on startup: ~0
-            QPX(true)
-            Ti := QPX(false)
-            ToolTip % "Time:" Ti
 			
+            ; HidP_GetUsageValue Loop
+            ; Values for 6-axis xbox pad
+            ; Pre Optimization: ~108000
+            QPX(true)
 			Loop % CapsArray[handle].NumberInputValueCaps {
+
 				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
 				s .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
+            Ti := QPX(false)
+            ToolTip % "Time:" Ti
 		}
         GuiControl,,% hAxes, % s
 	}

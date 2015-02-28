@@ -218,22 +218,7 @@ Class CHID {
 		);
 		*/
 		
-		UsageList := new _Struct("UShort[128]")
-		;VarSetCapacity(UsageList, 256)
-		r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList[], "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
-		;r := DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
-		res := r
-		if (r = this.HIDP_STATUS_SUCCESS){
-			r := 0
-		} else {
-			r := -1
-		}
-		If (r = -1) Or ErrorLevel {
-			clipboard := res
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " CHID.errmsg(A_LastError) "`nresult: " res
-		}
-		r := UsageList
-		return r
+		return DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
 	}
 	
 	HidP_GetUsageValue(ReportType, UsagePage, LinkCollection, Usage, ByRef UsageValue, ByRef PreparsedData, ByRef Report, ReportLength){
