@@ -88,7 +88,7 @@ Class CHID {
 		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
 	}
 	
-	GetRawInputDeviceInfo(Device, Command := -1, ByRef Data := 0, ByRef Size := 0){
+	GetRawInputDeviceInfo(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
 		
@@ -105,13 +105,7 @@ Class CHID {
 		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
 		);
 		*/
-		return DllCall("GetRawInputDeviceInfo", "Ptr", Device, "UInt", Command, "Ptr", Data, "UInt*", Size)
-		/*
-		If (r = -1) Or ErrorLevel {
-			soundbeep
-			ErrorLevel = %A_ThisFunc% call failed.`nReturn value: %r%`nErrorLevel: %ErrorLevel%`nLine: %A_LineNumber%`nLast Error: %A_LastError%
-			Return -1
-		}
+		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
 		*/
 	}
 	
