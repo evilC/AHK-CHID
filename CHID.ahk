@@ -120,7 +120,7 @@ Class CHID {
 		*/
 	}
 	
-	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0){
+	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0, cbSizeHeader := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
 		
@@ -132,23 +132,7 @@ Class CHID {
 		  _In_       UINT cbSizeHeader
 		);		
 		*/
-		static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
-		
-		if (uiCommand = -1){
-			uiCommand := this.RID_INPUT
-		}
-		if (pcbSize){
-			pData := new _Struct(WinStructs.RAWINPUT)
-			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData[], "UInt*", pcbSize, "Uint", cbSizeHeader)
-		} else {
-			r := DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader )
-		}
-		If (r = -1) Or ErrorLevel {
-			ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nhandle: " hRawInput "`nLast Error: " ErrMsg(A_LastError)
-			Return -1, ErrorLevel ", " RawInput
-		}
-		r := pcbSize
-		return r
+		return DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize, "Uint", cbSizeHeader)
 	}
 	
 	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){

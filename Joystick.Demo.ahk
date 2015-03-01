@@ -145,11 +145,14 @@ InputMsg(wParam, lParam) {
 	
     QPX(true)
 
-    If (!pcbSize:=HID.GetRawInputData(lParam))
+    static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
+    If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
 		return
+    }
     
-	if (-1 = ret := HID.GetRawInputData(lParam,,pRawInput, pcbSize))
-        return
+    static pRawInput := new _Struct(WinStructs.RAWINPUT)
+    HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
+    
     handle := pRawInput.header.hDevice
 	if (handle = 0)
 		MsgBox error handle 0
