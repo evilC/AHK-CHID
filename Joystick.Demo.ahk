@@ -263,7 +263,7 @@ SelectDevice:
         ;rid.Flags := HID.RIDEV_INPUTSINK
         rid.dwFlags := 0
         
-        ret := HID.RegisterRawInputDevices(rid, 1)
+        ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
         SelectedDevice := handle
         OnMessage(0x00FF, "InputMsg")
         ;msgbox % ret

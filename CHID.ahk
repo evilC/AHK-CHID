@@ -57,7 +57,7 @@ Class CHID {
 		return %ErrorString% 
 	}
 
-	RegisterRawInputDevices(ByRef RawInputDevices, NumDevices, Size := 0){
+	RegisterRawInputDevices(ByRef pRawInputDevices, uiNumDevices, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
 		
@@ -68,12 +68,7 @@ Class CHID {
 		);		
 		*/
 		
-		r := DllCall("RegisterRawInputDevices", "Ptr", RawInputDevices[], "UInt", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICE) )
-		;Check for errors
-		if ((r = -1) Or ErrorLevel) {
-			Return -1,ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		return r
+		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )
 	}
 	
 	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
