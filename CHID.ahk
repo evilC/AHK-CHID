@@ -1,10 +1,3 @@
-; DEPENDENCIES:
-; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
-; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
-; WinStructs: https://github.com/ahkscript/WinStructs
-#Include <_Struct>
-#Include <WinStructs>
-
 ; Source material
 ; http://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
 ; HID Usages: http://www.freebsddiary.org/APC/usb_hid_usages.php
