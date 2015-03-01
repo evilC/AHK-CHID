@@ -76,7 +76,7 @@ Class CHID {
 		return r
 	}
 	
-	GetRawInputDeviceList(ByRef RawInputDeviceList := 0, ByRef NumDevices := 0){
+	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -90,21 +90,7 @@ Class CHID {
 		  _In_       UINT cbSize									// The size of a RAWINPUTDEVICELIST structure, in bytes
 		);
 		*/
-		; Perform the call
-		if IsByRef(RawInputDeviceList) {			; RawInputDeviceList contains a struct, not a number
-			; Params passed - pull the device list.
-			RawInputDeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
-			r := DllCall("GetRawInputDeviceList", "Ptr", RawInputDeviceList[], "UInt*", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICELIST) )
-		} else {
-			; No Struct passed in, fill NumDevices with number of devices
-			r := DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", sizeof(WinStructs.RAWINPUTDEVICELIST) )
-		}
-		
-		;Check for errors
-		if ((r = -1) Or ErrorLevel) {
-			Return -1, ErrorLevel := A_ThisFunc " call failed.`nReturn value: " r "`nErrorLevel: " ErrorLevel "`nLine: " A_LineNumber "`nLast Error: " A_LastError
-		}
-		Return NumDevices
+		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
 	}
 	
 	GetRawInputDeviceInfo(Device, Command := -1, ByRef Data := 0, ByRef Size := 0){
