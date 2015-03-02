@@ -102,8 +102,11 @@ Loop % NumDevices {
 
     ; Buttons
     if (CapsArray[handle].NumberInputButtonCaps) {
-        ButtonCapsArray[handle] := new _Struct("WinStructs.HIDP_BUTTON_CAPS[" CapsArray[handle].NumberInputButtonCaps "]")
-        HID.HidP_GetButtonCaps(0, ButtonCapsArray[handle][], CapsArray[handle].NumberInputButtonCaps, PreparsedData)
+        
+        ButtonCaps := StructSetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+        HID.HidP_GetButtonCaps(0, &ButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
+        ButtonCapsArray[handle] := StructGetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+        
         btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
     }
     ; Axes / Hats
