@@ -1,8 +1,3 @@
-; DEPENDENCIES:
-; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
-; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
-#Include <_Struct>
-
 #include <CHID>
 #include Structs.ahk
 
@@ -149,11 +144,6 @@ InputMsg(wParam, lParam) {
 		return
 	}
 	
-	; Use _Struct to build _Struct_pRawInput
-	static _Struct_pRawInput := new _Struct(_StructLib.RAWINPUT)
-	HID.GetRawInputData(lParam, HID.RID_INPUT, _Struct_pRawInput[], pcbSize, cbSizeHeader)
-	
-	; Use Regular NumGet
 	static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
 	static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
 	if (pcbSize = 0){
@@ -162,7 +152,6 @@ InputMsg(wParam, lParam) {
 	HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
 	Regular_pRawInput := StructGetRAWINPUT(StructRAWINPUT)
 	
-	;MsgBox % Regular_pRawInput.hid.dwSizeHid "/" _Struct_pRawInput.hid.dwSizeHid
 	
 	;return
 	handle := Regular_pRawInput.header.hDevice
@@ -187,9 +176,7 @@ InputMsg(wParam, lParam) {
 			UsageLength := btns
 			
 			VarSetCapacity(UsageList, 256)
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, _Struct_pRawInput.hid.bRawData[""], Regular_pRawInput.hid.dwSizeHid)
-			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, Regular_pRawInput.hid.bRawData, Regular_pRawInput.hid.dwSizeHid)
-			;MsgBox % _Struct_pRawInput.hid.bRawData[""] " / " Regular_pRawInput.hid.bRawData
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + 24, Regular_pRawInput.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
@@ -202,18 +189,13 @@ InputMsg(wParam, lParam) {
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
 			VarSetCapacity(value, 4)
-			RawData := _Struct_pRawInput.hid.bRawData[""]
-			;RawData := Regular_pRawInput.hid.bRawData
-			Size := Regular_pRawInput.hid.dwSizeHid
-
 			;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
 				if (ValueCapsArray[handle][A_Index].UsagePage != 1){
 					; Ignore things not on the page we subscribed to.
 					continue
 				}
-				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
-				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
+				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, &StructRAWINPUT + 24, Regular_pRawInput.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
 				axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
