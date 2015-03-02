@@ -97,6 +97,7 @@ Class CHID {
 											// If uiCommand is RIDI_DEVICEINFO, set the cbSize member of RID_DEVICE_INFO to sizeof(RID_DEVICE_INFO) before calling GetRawInputDeviceInfo.
 		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
 		);
+		
 		*/
 		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
 		*/
@@ -113,6 +114,9 @@ Class CHID {
 		  _Inout_    PUINT pcbSize,
 		  _In_       UINT cbSizeHeader
 		);		
+		
+		Uses RAWINPUT structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645562(v=vs.85).aspx
+
 		*/
 		return DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize, "Uint", cbSizeHeader)
 	}
