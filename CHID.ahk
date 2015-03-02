@@ -135,6 +135,9 @@ Class CHID {
 		  _Out_  PHIDP_CAPS Capabilities
 		);
 		returns HIDP_STATUS_ value, eg HIDP_STATUS_SUCCESS
+		
+		Uses HIDP_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
+
 		*/
 		;Capabilities := new _Struct("WinStructs.HIDP_CAPS")
 		return DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities)

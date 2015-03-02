@@ -83,7 +83,6 @@ Loop % NumDevices {
 		)}
 	}
 
-	;Data := StructGetRIDI_DEVICEINFO(Data)
 	if (Data.dwType != HID.RIM_TYPEHID){
 		; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
 		continue
@@ -108,10 +107,27 @@ Loop % NumDevices {
 	VarSetCapacity(PreparsedData, ppSize)
 	ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 	
-	Cap := StructSetHIDP_CAPS(Cap)
+	VarSetCapacity(Cap, 64)
 	HID.HidP_GetCaps(PreparsedData, &Cap)
-	CapsArray[handle] := StructGetHIDP_CAPS(Cap)
 
+	CapsArray[handle] := {
+	(Join,
+		Usage: NumGet(Cap, 0, "UShort")
+		UsagePage: NumGet(Cap, 2, "UShort")
+		InputReportByteLength: NumGet(Cap, 4, "UShort")
+		OutputReportByteLength: NumGet(Cap, 6, "UShort")
+		FeatureReportByteLength: NumGet(Cap, 8, "UShort")
+		Reserved: NumGet(Cap, 10, "UShort")
+		NumberLinkCollectionNodes: NumGet(Cap, 44, "UShort")
+		NumberInputButtonCaps: NumGet(Cap, 46, "UShort")
+		NumberInputValueCaps: NumGet(Cap, 48, "UShort")
+		NumberInputDataIndices: NumGet(Cap, 50, "UShort")
+		NumberOutputButtonCaps: NumGet(Cap, 52, "UShort")
+		NumberOutputDataIndices: NumGet(Cap, 54, "UShort")
+		NumberFeatureButtonCaps: NumGet(Cap, 56, "UShort")
+		NumberFeatureDataIndices: NumGet(Cap, 58, "UShort")
+	)}
+	
 	Axes := ""
 	Hats := 0
 	btns := 0
