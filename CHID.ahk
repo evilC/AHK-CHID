@@ -79,6 +79,8 @@ Class CHID {
 																	// the function returns the actual number of devices in this variable and fails with ERROR_INSUFFICIENT_BUFFER.
 		  _In_       UINT cbSize									// The size of a RAWINPUTDEVICELIST structure, in bytes
 		);
+		
+		Uses RAWINPUTDEVICELIST structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
 		*/
 		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
 	}

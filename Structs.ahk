@@ -1,36 +1,3 @@
-; ====================================================
-/*
-RAWINPUTDEVICELIST structure
-Used in  GetRawInputDeviceList calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
-typedef struct tagRAWINPUTDEVICELIST {
-  HANDLE hDevice;
-  DWORD  dwType;
-} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
-*/
-
-SizeGetRAWINPUTDEVICE(){
-	return 8
-}
-
-StructGetRAWINPUTDEVICELIST(ByRef data, NumDevices){
-	out := []
-	Loop % NumDevices {
-		b := (8 * (A_Index - 1))
-		out[A_Index] := {
-		(Join,
-			_size: 8
-			hDevice: NumGet(data, b, "Uint")
-			dwType: NumGet(data, b + 4, "Uint")
-		)}
-	}
-	return out
-}
-
-StructSetRAWINPUTDEVICELIST(ByRef arr, NumDevices){
-	VarSetCapacity(arr, 8 * NumDevices)
-	return arr
-}
-
 ; ==================================================
 StructGetRIDI_DEVICEINFO(ByRef data){
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2

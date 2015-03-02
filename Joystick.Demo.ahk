@@ -29,12 +29,21 @@ Gui, Show,, Joystick Info
 HID := new CHID()
 
 ; Build Device List ===========================================================
-DeviceSize := SizeGetRAWINPUTDEVICE()
+DeviceSize := 8 ; sizeof(RAWINPUTDEVICELIST)
 HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
 
-DeviceList := StructSetRAWINPUTDEVICELIST(DeviceList, NumDevices)
-HID.GetRawInputDeviceList(&DeviceList, NumDevices, DeviceSize)
-DeviceList := StructGetRAWINPUTDEVICELIST(DeviceList, NumDevices)
+VarSetCapacity(Data, 8 * NumDevices)
+HID.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
+DeviceList := []
+Loop % NumDevices {
+	b := (8 * (A_Index - 1))
+	DeviceList[A_Index] := {
+	(Join,
+		_size: 8
+		hDevice: NumGet(data, b, "Uint")
+		dwType: NumGet(data, b + 4, "Uint")
+	)}
+}
 
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
