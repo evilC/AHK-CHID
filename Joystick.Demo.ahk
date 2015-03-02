@@ -52,6 +52,7 @@ CapsArray := {}
 ButtonCapsArray := {}
 AxisCapsArray := {}
 ValueCapsArray := {}
+
 ; _Struct arrays too slow - cache values.
 AxesArray := {}
 PageArray := {}
@@ -111,8 +112,10 @@ Loop % NumDevices {
     }
     ; Axes / Hats
     if (CapsArray[handle].NumberInputValueCaps) {
-        ValueCapsArray[handle] := new _Struct("WinStructs.HIDP_VALUE_CAPS[" CapsArray[handle].NumberInputValueCaps "]")
-        HID.HidP_GetValueCaps(0, ValueCapsArray[handle][], CapsArray[handle].NumberInputValueCaps, PreparsedData)
+        ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+        HID.HidP_GetValueCaps(0, &ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
+        ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+        
         AxesArray[handle] := {}
         PageArray[handle] := {}
         AxisCaps := {}
