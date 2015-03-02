@@ -49,6 +49,8 @@ StructSetRAWINPUT(ByRef RawInput := 0, data := 0){
 	return RawInput
 }
 
+; ====================================================
+
 SizeGetRAWINPUTDEVICE(){
 	return 8
 }
@@ -70,4 +72,31 @@ StructGetRAWINPUTDEVICELIST(ByRef data, NumDevices){
 StructSetRAWINPUTDEVICELIST(ByRef arr, NumDevices){
 	VarSetCapacity(arr, 8 * NumDevices)
 	return arr
+}
+
+; ==================================================
+StructGetRIDI_DEVICEINFO(ByRef data){
+	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+	
+	out := {}
+	out.cbSize := NumGet(data, 0, "Uint")
+	out.dwType := NumGet(data, 4, "Uint")
+	if (out.dwType = RIM_TYPEHID){
+		out.hid := {
+		(Join,
+			dwVendorId: NumGet(data, 8, "Uint")
+			dwProductId: NumGet(data, 12, "Uint")
+			dwVersionNumber: NumGet(data, 16, "Uint")
+			usUsagePage: NumGet(data, 20, "Uint")
+			usUsage: NumGet(data, 22, "Uint")
+		)}
+	}
+	return out
+}
+
+StructSetRIDI_DEVICEINFO(ByRef struct){
+	; sizeof(RID_DEVICE_INFO) = 32
+	VarSetCapacity(struct, 32)
+	NumPut(32, struct, 0, "unit")
+	return struct
 }

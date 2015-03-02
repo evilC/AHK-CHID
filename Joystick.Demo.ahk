@@ -59,15 +59,20 @@ PageArray := {}
 Gui,ListView,lvDL
 Loop % NumDevices {
     ; Get device Handle
-	dev := DeviceList[A_Index]
-	if (dev.dwType != 2){
-		continue
-	}
+    if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
+        continue
+    }
 	handle := DeviceList[A_Index].hDevice
     
     ; Get Device Info
-    Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
-	HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
+    Data := StructSetRIDI_DEVICEINFO(Data)
+    HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &Data, DevSize)
+    Data := StructGetRIDI_DEVICEINFO(Data)
+    if (Data.dwType != HID.RIM_TYPEHID){
+        ; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
+        continue
+    }
+    
     DevData[A_Index] := Data
     
     ; Find Human name from registry
