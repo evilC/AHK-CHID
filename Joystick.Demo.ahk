@@ -28,6 +28,7 @@ Gui, Show,, Joystick Info
 
 HID := new CHID()
 
+; Build Device List ===========================================================
 DeviceSize := SizeGetRAWINPUTDEVICE()
 HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
 
@@ -130,6 +131,32 @@ Loop % NumDevices {
 
 return
 
+; Register for WM_INPUT messages ==============================================
+SelectDevice:
+	SelectDevice()
+	return
+
+SelectDevice(){
+	global HID, SelectedDevice, DeviceList, DevData
+	
+	LV_GetText(s, LV_GetNext())
+	if (A_GuiEvent = "i" && s > 0){
+		static RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, 12)
+		
+		NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
+		NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
+		Flags := 0x00000100 ; RIDEV_INPUTSINK
+		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
+		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
+		
+		HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
+		SelectedDevice := DeviceList[s].hDevice
+		OnMessage(0x00FF, "InputMsg")
+	}
+	return
+}
+
+; Process WM_INPUT messages ===================================================
 InputMsg(wParam, lParam) {
 	Critical
 	global HID
@@ -230,21 +257,6 @@ StaticSetCapacity(ByRef var, size){
 	VarSetCapacity(var, size)
 	return var
 }
-
-SelectDevice:
-	LV_GetText(s, LV_GetNext())
-	if (A_GuiEvent = "i" && s > 0){
-		obj := {}
-		obj.usUsagePage := DevData[s].hid.usUsagePage
-		obj.usUsage := DevData[s].hid.usUsage
-		obj.hwndTarget := WinExist("A") ; A_ScriptHwnd
-		
-		StructSetRAWINPUTDEVICE(RAWINPUTDEVICE, obj)
-		HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
-		SelectedDevice := DeviceList[s].hDevice
-		OnMessage(0x00FF, "InputMsg")
-	}
-	return
 
 Esc::
 GuiClose:

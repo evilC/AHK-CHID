@@ -58,7 +58,9 @@ Class CHID {
 		  _In_  PCRAWINPUTDEVICE pRawInputDevices,
 		  _In_  UINT uiNumDevices,
 		  _In_  UINT cbSize
-		);		
+		);
+		
+		Uses RAWINPUTDEVICE structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645565(v=vs.85).aspx
 		*/
 		
 		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )

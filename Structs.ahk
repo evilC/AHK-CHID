@@ -1,35 +1,5 @@
 ; ====================================================
 /*
-RAWINPUTDEVICE structure
-Used in RegisterRawInputDevices calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
-
-typedef struct tagRAWINPUTDEVICE {
-  USHORT usUsagePage;
-  USHORT usUsage;
-  DWORD  dwFlags;
-  HWND   hwndTarget;
-} RAWINPUTDEVICE, *PRAWINPUTDEVICE, *LPRAWINPUTDEVICE;
-*/
-
-StructSetRAWINPUTDEVICE(ByRef data, obj){
-	VarSetCapacity(data, 12)
-	if (ObjHasKey(obj,"usUsagePage")){
-		NumPut(obj.usUsagePage, data, 0, "UShort")
-	}
-	if (ObjHasKey(obj,"usUsage")){
-		NumPut(obj.usUsage, data, 2, "UShort")
-	}
-	if (ObjHasKey(obj,"dwFlags")){
-		NumPut(obj.dwFlags, data, 4, "Uint")
-	}
-	if (ObjHasKey(obj,"hwndTarget")){
-		NumPut(obj.hwndTarget, data, 8, "Uint")
-	}
-	return data
-}
-
-; ====================================================
-/*
 RAWINPUTDEVICELIST structure
 Used in  GetRawInputDeviceList calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
 typedef struct tagRAWINPUTDEVICELIST {
