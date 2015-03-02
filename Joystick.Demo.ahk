@@ -154,7 +154,6 @@ InputMsg(wParam, lParam) {
 	
     QPX(true)
 
-    ;cbSizeHeader := HID.StructSetRAWINPUT(StructRAWINPUT)
     static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
     If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
 		return
@@ -164,7 +163,7 @@ InputMsg(wParam, lParam) {
     HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
     
     static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
-    static SizeHeader := StructGetRAWINPUTHeaderSize()
+    static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
     if (pcbSize = 0){
         HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, SizeHeader)
     }

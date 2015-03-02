@@ -27,6 +27,7 @@ StructGetRAWINPUT(ByRef data){
 	;RAWINPUT.header.dwType := NumGet(data, 0, "Uint")
 	RAWINPUT.header := {
 	(Join,
+		_size: 16
 		dwType: NumGet(data, 0, "Uint")
 		dwSize: NumGet(data, 4, "Uint")
 		hDevice: NumGet(data, 8, "Uint")
@@ -43,11 +44,25 @@ StructGetRAWINPUT(ByRef data){
 	return RAWINPUT
 }
 
-StructGetRAWINPUTHeaderSize(){
-	return 16 ; sizeof(RAWINPUTHEADER)
-}
-
 StructSetRAWINPUT(ByRef RawInput := 0, data := 0){
 	VarSetCapacity(RawInput, 40)
 	return RawInput
+}
+
+StructGetRAWINPUTDEVICELIST(data){
+	/*
+	typedef struct tagRAWINPUTDEVICELIST {
+	  HANDLE hDevice;
+	  DWORD  dwType;
+	} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
+	*/
+	
+	RAWINPUTDEVICELIST := {
+	(Join,
+		_size: 8
+		hDevice: NumGet(data, 0, "Uint")
+		dwType: NumGet(data, 4, "Uint")
+	)}	
+	return RAWINPUTDEVICELIST
+
 }
