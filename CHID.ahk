@@ -153,6 +153,8 @@ Class CHID {
 		  _Inout_  PUSHORT ButtonCapsLength,
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
+		
+		Uses HIDP_BUTTON_CAPS structure: https://msdn.microsoft.com/en-gb/library/windows/hardware/ff539693(v=vs.85).aspx
 		*/
 		return DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps, "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
 	}

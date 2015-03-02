@@ -135,9 +135,53 @@ Loop % NumDevices {
 	; Buttons
 	if (CapsArray[handle].NumberInputButtonCaps) {
 		
-		ButtonCaps := StructSetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+		VarSetCapacity(ButtonCaps, (72 * CapsArray[handle].NumberInputButtonCaps))
 		HID.HidP_GetButtonCaps(0, &ButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
-		ButtonCapsArray[handle] := StructGetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+		ButtonCapsArray[handle] := []
+		Loop % CapsArray[handle].NumberInputButtonCaps {
+			b := (A_Index -1) * 72
+			ButtonCapsArray[handle][A_Index] := {
+			(Join,
+				UsagePage: NumGet(ButtonCaps, b + 0, "UShort")
+				ReportID: NumGet(ButtonCaps, b + 2, "UChar")
+				IsAlias: NumGet(ButtonCaps, b + 3, "UChar")
+				BitField: NumGet(ButtonCaps, b + 4, "UShort")
+				LinkCollection: NumGet(ButtonCaps, b + 6, "UShort")
+				LinkUsage: NumGet(ButtonCaps, b + 8, "UShort")
+				LinkUsagePage: NumGet(ButtonCaps, b + 10, "UShort")
+				IsRange: NumGet(ButtonCaps, b + 12, "UChar")
+				IsStringRange: NumGet(ButtonCaps, b + 13, "UChar")
+				IsDesignatorRange: NumGet(ButtonCaps, b + 14, "UChar")
+				IsAbsolute: NumGet(ButtonCaps, b + 15, "UChar")
+				Reserved: NumGet(ButtonCaps, b + 16, "Uint")
+			)}
+			if (ButtonCapsArray[handle][A_Index].IsRange){
+				ButtonCapsArray[handle][A_Index].Range := {
+				(Join,
+					UsageMin: NumGet(ButtonCaps, b + 56, "UShort")
+					UsageMax: NumGet(ButtonCaps, b + 58, "UShort")
+					StringMin: NumGet(ButtonCaps, b + 60, "UShort")
+					StringMax: NumGet(ButtonCaps, b + 62, "UShort")
+					DesignatorMin: NumGet(ButtonCaps, b + 64, "UShort")
+					DesignatorMax: NumGet(ButtonCaps, b + 66, "UShort")
+					DataIndexMin: NumGet(ButtonCaps, b + 68, "UShort")
+					DataIndexMax: NumGet(ButtonCaps, b + 70, "UShort")
+				)}
+				
+			} else {
+				ButtonCapsArray[handle][A_Index].NotRange := {
+				(Join,
+					Usage: NumGet(ButtonCaps, 56, "UShort")
+					Reserved1: NumGet(ButtonCaps, 58, "UShort")
+					StringIndex: NumGet(ButtonCaps, 60, "UShort")
+					Reserved2: NumGet(ButtonCaps, 62, "UShort")
+					DesignatorIndex: NumGet(ButtonCaps, 64, "UShort")
+					Reserved3: NumGet(ButtonCaps, 66, "UShort")
+					DataIndex: NumGet(ButtonCaps, 68, "UShort")
+					Reserved4: NumGet(ButtonCaps, 70, "UShort")
+				)}
+			}
+		}
 		
 		btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 	}
