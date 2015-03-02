@@ -7,6 +7,8 @@
 
 ; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #include <CHID>
+#include BuiltIn Structs.ahk
+
 #singleinstance force
 SetBatchLines -1
 
@@ -32,7 +34,8 @@ Gui, Add, Text, % "hwndhProcessTime w50 ys"
 
 Gui, Show,, Joystick Info
 
-HID := new CHID()
+;HID := new CHID()
+HID := new CHID_BuiltInStructs()
 HID.GetRawInputDeviceList(0, NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
 
 DeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
@@ -152,6 +155,7 @@ InputMsg(wParam, lParam) {
 	
     QPX(true)
 
+    ;cbSizeHeader := HID.StructSetRAWINPUT(StructRAWINPUT)
     static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
     If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
 		return
@@ -160,6 +164,13 @@ InputMsg(wParam, lParam) {
     static pRawInput := new _Struct(WinStructs.RAWINPUT)
     HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
     
+    cbSizeHeader := HID.StructSetRAWINPUT(StructRAWINPUT)
+    HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader)
+    ObjRAWINPUT := HID.StructGetRAWINPUT(StructRAWINPUT)
+    
+    ;MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
+    
+    ;return
     handle := pRawInput.header.hDevice
 	if (handle = 0)
 		MsgBox error handle 0
