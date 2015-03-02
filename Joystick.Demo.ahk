@@ -375,7 +375,8 @@ InputMsg(wParam, lParam) {
 				if (A_Index > 1){
 					btnstring .= ","
 				}
-				btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+				;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+				btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
 			}
 		}
 		
