@@ -3,7 +3,7 @@
 ; HID Usages: http://www.freebsddiary.org/APC/usb_hid_usages.php
 ; Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140a02c098732961c685e9c04994bf57b:bsnes/ruby/input/rawinput.cpp#Lundefined
 
-; A base set of methods for interfacing with HID API calls using _Structs
+; A base set of methods for interfacing with HID API calls
 Class CHID {
 	; Constants pulled from header files
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005

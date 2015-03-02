@@ -149,34 +149,34 @@ InputMsg(wParam, lParam) {
 		return
     }
     
-    ; Use _Struct to build pRawInput
-    static pRawInput := new _Struct(_StructLib.RAWINPUT)
-    HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
+    ; Use _Struct to build _Struct_pRawInput
+    static _Struct_pRawInput := new _Struct(_StructLib.RAWINPUT)
+    HID.GetRawInputData(lParam, HID.RID_INPUT, _Struct_pRawInput[], pcbSize, cbSizeHeader)
     
-    ; Use native NumGet
+    ; Use Regular NumGet
     static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
     static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
     if (pcbSize = 0){
         HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, SizeHeader)
     }
     HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
-    ObjRAWINPUT := StructGetRAWINPUT(StructRAWINPUT)
+    Regular_pRawInput := StructGetRAWINPUT(StructRAWINPUT)
     
-    ;MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
+    ;MsgBox % Regular_pRawInput.hid.dwSizeHid "/" _Struct_pRawInput.hid.dwSizeHid
     
     ;return
-    handle := ObjRAWINPUT.header.hDevice
+    handle := Regular_pRawInput.header.hDevice
 	if (handle = 0)
 		MsgBox error handle 0
 	if (handle != SelectedDevice){
 		return
 	}
-    devtype := ObjRAWINPUT.header.dwType
+    devtype := Regular_pRawInput.header.dwType
     if (devtype != HID.RIM_TYPEHID){
         return
     }
 
-    if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
+    if (Regular_pRawInput.header.dwType = HID.RIM_TYPEHID){
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 		
 		btnstring := "Pressed Buttons:`n`n"
@@ -187,9 +187,9 @@ InputMsg(wParam, lParam) {
 			UsageLength := btns
             
             VarSetCapacity(UsageList, 256)
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], ObjRAWINPUT.hid.dwSizeHid)
-			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, ObjRAWINPUT.hid.bRawData, ObjRAWINPUT.hid.dwSizeHid)
-            ;MsgBox % pRawInput.hid.bRawData[""] " / " ObjRAWINPUT.hid.bRawData
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, _Struct_pRawInput.hid.bRawData[""], Regular_pRawInput.hid.dwSizeHid)
+			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, Regular_pRawInput.hid.bRawData, Regular_pRawInput.hid.dwSizeHid)
+            ;MsgBox % _Struct_pRawInput.hid.bRawData[""] " / " Regular_pRawInput.hid.bRawData
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
@@ -202,9 +202,9 @@ InputMsg(wParam, lParam) {
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
             VarSetCapacity(value, 4)
-            RawData := pRawInput.hid.bRawData[""]
-            ;RawData := ObjRAWINPUT.hid.bRawData
-            Size := ObjRAWINPUT.hid.dwSizeHid
+            RawData := _Struct_pRawInput.hid.bRawData[""]
+            ;RawData := Regular_pRawInput.hid.bRawData
+            Size := Regular_pRawInput.hid.dwSizeHid
 
             ;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
