@@ -48,12 +48,7 @@ SelectedDevice := 0
 ; Store data that does not change for WM_INPUT calls
 CapsArray := {}
 ButtonCapsArray := {}
-AxisCapsArray := {}
 ValueCapsArray := {}
-
-; _Struct arrays too slow - cache values.
-AxesArray := {}
-PageArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
@@ -114,12 +109,7 @@ Loop % NumDevices {
         HID.HidP_GetValueCaps(0, &ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
         ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
         
-        AxesArray[handle] := {}
-        PageArray[handle] := {}
-        AxisCaps := {}
         Loop % CapsArray[handle].NumberInputValueCaps {
-            AxesArray[handle][A_Index] := ValueCapsArray[handle][A_Index].Range.UsageMin
-            PageArray[handle][A_Index] := ValueCapsArray[handle][A_Index].UsagePage
             Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin
             if (Type = 0x39){
                 ; Hat
@@ -131,19 +121,6 @@ Loop % NumDevices {
                     Axes .= ","
                 }
                 Axes .= AxisNames[Type]
-                AxisCaps[AxisNames[Type]] := 1
-            }
-        }
-        Axes := ""
-        Count := 0
-        ; Sort Axis Names into order
-        Loop % AxisNames.MaxIndex() {
-            if (AxisCaps[AxisNames[A_Index]] = 1){
-                if (Count){
-                    Axes .= ","
-                }
-                Axes .= AxisNames[A_Index]
-                Count++
             }
         }
     }
@@ -164,7 +141,7 @@ InputMsg(wParam, lParam) {
     global HID
     global SelectedDevice
     global hAxes, hButtons, hProcessTime
-    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray, AxesArray, PageArray
+    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 	
     QPX(true)
 
@@ -263,14 +240,14 @@ InputMsg(wParam, lParam) {
 
             ;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
-                if (PageArray[handle][A_Index] != 1){
+                if (ValueCapsArray[handle][A_Index].UsagePage != 1){
                     ; Ignore things not on the page we subscribed to.
                     continue
                 }
 				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
-				r := HID.HidP_GetUsageValue(0, PageArray[handle][A_Index], 0, AxesArray[handle][A_Index], value, PreparsedData, RawData, Size)
+				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
 				value := NumGet(value,0,"Short")
-				axisstring .= HID.AxisHexToName[AxesArray[handle][A_Index]] " axis: " value "`n"
+				axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
 		}
         Ti := QPX(false)
