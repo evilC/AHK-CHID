@@ -1,27 +1,31 @@
-StructGetRAWINPUT(ByRef data){
-	/*
-		typedef struct tagRAWINPUT {
-		  RAWINPUTHEADER header;
-		  union {
-			RAWMOUSE    mouse;
-			RAWKEYBOARD keyboard;
-			RAWHID      hid;
-		  } data;
-		} RAWINPUT, *PRAWINPUT, *LPRAWINPUT;
-		
-		typedef struct tagRAWINPUTHEADER {
-		  DWORD  dwType;
-		  DWORD  dwSize;
-		  HANDLE hDevice;
-		  WPARAM wParam;
-		} RAWINPUTHEADER, *PRAWINPUTHEADER;
+/*
+RAWINPUT structure
+Used in GetRawInputData calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
 
-		typedef struct tagRAWHID {
-		  DWORD dwSizeHid;
-		  DWORD dwCount;
-		  BYTE  bRawData[1];
-		} RAWHID, *PRAWHID, *LPRAWHID;
-	*/
+typedef struct tagRAWINPUT {
+  RAWINPUTHEADER header;
+  union {
+	RAWMOUSE    mouse;
+	RAWKEYBOARD keyboard;
+	RAWHID      hid;
+  } data;
+} RAWINPUT, *PRAWINPUT, *LPRAWINPUT;
+
+typedef struct tagRAWINPUTHEADER {
+  DWORD  dwType;
+  DWORD  dwSize;
+  HANDLE hDevice;
+  WPARAM wParam;
+} RAWINPUTHEADER, *PRAWINPUTHEADER;
+
+typedef struct tagRAWHID {
+  DWORD dwSizeHid;
+  DWORD dwCount;
+  BYTE  bRawData[1];
+} RAWHID, *PRAWHID, *LPRAWHID;
+
+*/
+StructGetRAWINPUT(ByRef data){
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 	static RAWINPUT := {}
 	;RAWINPUT.header.dwType := NumGet(data, 0, "Uint")
@@ -50,6 +54,44 @@ StructSetRAWINPUT(ByRef RawInput := 0, data := 0){
 }
 
 ; ====================================================
+/*
+RAWINPUTDEVICE structure
+Used in RegisterRawInputDevices calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
+
+typedef struct tagRAWINPUTDEVICE {
+  USHORT usUsagePage;
+  USHORT usUsage;
+  DWORD  dwFlags;
+  HWND   hwndTarget;
+} RAWINPUTDEVICE, *PRAWINPUTDEVICE, *LPRAWINPUTDEVICE;
+*/
+
+StructSetRAWINPUTDEVICE(ByRef data, obj){
+	VarSetCapacity(data, 12)
+	if (ObjHasKey(obj,"usUsagePage")){
+		NumPut(obj.usUsagePage, data, 0, "UShort")
+	}
+	if (ObjHasKey(obj,"usUsage")){
+		NumPut(obj.usUsage, data, 2, "UShort")
+	}
+	if (ObjHasKey(obj,"dwFlags")){
+		NumPut(obj.dwFlags, data, 4, "Uint")
+	}
+	if (ObjHasKey(obj,"hwndTarget")){
+		NumPut(obj.hwndTarget, data, 8, "Uint")
+	}
+	return data
+}
+
+; ====================================================
+/*
+RAWINPUTDEVICELIST structure
+Used in  GetRawInputDeviceList calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
+typedef struct tagRAWINPUTDEVICELIST {
+  HANDLE hDevice;
+  DWORD  dwType;
+} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
+*/
 
 SizeGetRAWINPUTDEVICE(){
 	return 8
@@ -87,8 +129,8 @@ StructGetRIDI_DEVICEINFO(ByRef data){
 			dwVendorId: NumGet(data, 8, "Uint")
 			dwProductId: NumGet(data, 12, "Uint")
 			dwVersionNumber: NumGet(data, 16, "Uint")
-			usUsagePage: NumGet(data, 20, "Uint")
-			usUsage: NumGet(data, 22, "Uint")
+			usUsagePage: NumGet(data, 20, "UShort")
+			usUsage: NumGet(data, 22, "UShort")
 		)}
 	}
 	return out

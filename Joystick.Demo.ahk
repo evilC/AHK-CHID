@@ -283,19 +283,15 @@ FormatHex(val){
 SelectDevice:
     LV_GetText(s, LV_GetNext())
     if (A_GuiEvent = "i" && s > 0){
-        ; Register Device
-        handle := DeviceList[s].hDevice
-        rid := new _struct(WinStructs.RAWINPUTDEVICE)
-        rid.usUsagePage := DevData[s].hid.usUsagePage
-        rid.usUsage := DevData[s].hid.usUsage
-        rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
-        ;rid.Flags := HID.RIDEV_INPUTSINK
-        rid.dwFlags := 0
+        obj := {}
+        obj.usUsagePage := DevData[s].hid.usUsagePage
+        obj.usUsage := DevData[s].hid.usUsage
+        obj.hwndTarget := WinExist("A") ; A_ScriptHwnd
         
-        ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
-        SelectedDevice := handle
+        StructSetRAWINPUTDEVICE(RAWINPUTDEVICE, obj)
+        HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
+        SelectedDevice := DeviceList[s].hDevice
         OnMessage(0x00FF, "InputMsg")
-        ;msgbox % ret
     }
     return
 
