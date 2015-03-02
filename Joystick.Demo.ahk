@@ -1,5 +1,4 @@
 #include <CHID>
-#include Structs.ahk
 
 #singleinstance force
 SetBatchLines -1
@@ -187,9 +186,68 @@ Loop % NumDevices {
 	}
 	; Axes / Hats
 	if (CapsArray[handle].NumberInputValueCaps) {
-		ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		;ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		VarSetCapacity(ValueCaps, (72 * CapsArray[handle].NumberInputValueCaps))
 		HID.HidP_GetValueCaps(0, &ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
-		ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		
+		;ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		ValueCapsArray[handle] := []
+		Loop % CapsArray[handle].NumberInputValueCaps {
+			b := (A_Index -1) * 72
+			ValueCapsArray[handle][A_Index] := {
+			(Join,
+				UsagePage: NumGet(ValueCaps, b + 0, "UShort")
+				ReportID: NumGet(ValueCaps, b + 2, "UChar")
+				IsAlias: NumGet(ValueCaps, b + 3, "UChar")
+				BitField: NumGet(ValueCaps, b + 4, "UShort")
+				LinkCollection: NumGet(ValueCaps, b + 6, "UShort")
+				LinkUsage: NumGet(ValueCaps, b + 8, "UShort")
+				LinkUsagePage: NumGet(ValueCaps, b + 10, "UShort")
+				IsRange: NumGet(ValueCaps, b + 12, "UChar")
+				IsStringRange: NumGet(ValueCaps, b + 13, "UChar")
+				IsDesignatorRange: NumGet(ValueCaps, b + 14, "UChar")
+				IsAbsolute: NumGet(ValueCaps, b + 15, "UChar")
+				HasNull: NumGet(ValueCaps, b + 16, "UChar")
+				Reserved: NumGet(ValueCaps, b + 17, "UChar")
+				BitSize: NumGet(ValueCaps, b + 18, "UShort")
+				ReportCount: NumGet(ValueCaps, b + 20, "UShort")
+				Reserved2: NumGet(ValueCaps, b + 22, "UShort")
+				UnitsExp: NumGet(ValueCaps, b + 32, "Uint")
+				Units: NumGet(ValueCaps, b + 36, "Uint")
+				LogicalMin: NumGet(ValueCaps, b + 40, "int")
+				LogicalMax: NumGet(ValueCaps, b + 44, "int")
+				PhysicalMin: NumGet(ValueCaps, b + 48, "int")
+				PhysicalMax: NumGet(ValueCaps, b + 52, "int")
+			)}
+			; ToDo: Why is IsRange not 1?
+			;if (out[A_Index].IsRange)
+				ValueCapsArray[handle][A_Index].Range := {
+				(Join,
+					UsageMin: NumGet(ValueCaps, b + 56, "UShort")
+					UsageMax: NumGet(ValueCaps, b + 58, "UShort")
+					StringMin: NumGet(ValueCaps, b + 60, "UShort")
+					StringMax: NumGet(ValueCaps, b + 62, "UShort")
+					DesignatorMin: NumGet(ValueCaps, b + 64, "UShort")
+					DesignatorMax: NumGet(ValueCaps, b + 66, "UShort")
+					DataIndexMin: NumGet(ValueCaps, b + 68, "UShort")
+					DataIndexMax: NumGet(ValueCaps, b + 70, "UShort")
+				)}
+			/*	
+			} else {
+				ValueCapsArray[handle][A_Index].NotRange := {
+				(Join,
+					Usage: NumGet(ValueCaps, 56, "UShort")
+					Reserved1: NumGet(ValueCaps, 58, "UShort")
+					StringIndex: NumGet(ValueCaps, 60, "UShort")
+					Reserved2: NumGet(ValueCaps, 62, "UShort")
+					DesignatorIndex: NumGet(ValueCaps, 64, "UShort")
+					Reserved3: NumGet(ValueCaps, 66, "UShort")
+					DataIndex: NumGet(ValueCaps, 68, "UShort")
+					Reserved4: NumGet(ValueCaps, 70, "UShort")
+				)}
+			}
+			*/
+		}
 		
 		Loop % CapsArray[handle].NumberInputValueCaps {
 			Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin

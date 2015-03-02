@@ -169,6 +169,8 @@ Class CHID {
 		  _Inout_  PUSHORT ValueCapsLength,
 		  _In_     PHIDP_PREPARSED_DATA PreparsedData
 		);
+		
+		Uses HIDP_VALUE_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539832(v=vs.85).aspx
 		*/
 		return DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps, "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
 	}
