@@ -63,9 +63,27 @@ Loop % NumDevices {
 	handle := DeviceList[A_Index].hDevice
 	
 	; Get Device Info
-	Data := StructSetRIDI_DEVICEINFO(Data)
-	HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &Data, DevSize)
-	Data := StructGetRIDI_DEVICEINFO(Data)
+	VarSetCapacity(RID_DEVICE_INFO, 32)
+	NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
+	
+	HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+	RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+	
+	Data := {}
+	Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
+	Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
+	if (Data.dwType = RIM_TYPEHID){
+		Data.hid := {
+		(Join,
+			dwVendorId: NumGet(RID_DEVICE_INFO, 8, "Uint")
+			dwProductId: NumGet(RID_DEVICE_INFO, 12, "Uint")
+			dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
+			usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
+			usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
+		)}
+	}
+
+	;Data := StructGetRIDI_DEVICEINFO(Data)
 	if (Data.dwType != HID.RIM_TYPEHID){
 		; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
 		continue

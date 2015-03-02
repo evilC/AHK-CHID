@@ -102,6 +102,7 @@ Class CHID {
 		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
 		);
 		
+		Uses RID_DEVICE_INFO structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645581%28v=vs.85%29.aspx
 		*/
 		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
 		*/

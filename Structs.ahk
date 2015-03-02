@@ -1,30 +1,3 @@
-; ==================================================
-StructGetRIDI_DEVICEINFO(ByRef data){
-	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-	
-	out := {}
-	out.cbSize := NumGet(data, 0, "Uint")
-	out.dwType := NumGet(data, 4, "Uint")
-	if (out.dwType = RIM_TYPEHID){
-		out.hid := {
-		(Join,
-			dwVendorId: NumGet(data, 8, "Uint")
-			dwProductId: NumGet(data, 12, "Uint")
-			dwVersionNumber: NumGet(data, 16, "Uint")
-			usUsagePage: NumGet(data, 20, "UShort")
-			usUsage: NumGet(data, 22, "UShort")
-		)}
-	}
-	return out
-}
-
-StructSetRIDI_DEVICEINFO(ByRef struct){
-	; sizeof(RID_DEVICE_INFO) = 32
-	VarSetCapacity(struct, 32)
-	NumPut(32, struct, 0, "unit")
-	return struct
-}
-
 ; ===================================================
 /*
 HIDP_CAPS structure
