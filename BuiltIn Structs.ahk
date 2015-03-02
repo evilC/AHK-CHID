@@ -142,3 +142,57 @@ StructSetRIDI_DEVICEINFO(ByRef struct){
 	NumPut(32, struct, 0, "unit")
 	return struct
 }
+
+; ===================================================
+/*
+HIDP_CAPS structure
+https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
+Used by HidP_GetCaps: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
+sizeof(HIDP_CAPS) = 64
+
+typedef struct _HIDP_CAPS {
+  USAGE  Usage;
+  USAGE  UsagePage;
+  USHORT InputReportByteLength;
+  USHORT OutputReportByteLength;
+  USHORT FeatureReportByteLength;
+  USHORT Reserved[17];
+  USHORT NumberLinkCollectionNodes;
+  USHORT NumberInputButtonCaps;
+  USHORT NumberInputValueCaps;
+  USHORT NumberInputDataIndices;
+  USHORT NumberOutputButtonCaps;
+  USHORT NumberOutputValueCaps;
+  USHORT NumberOutputDataIndices;
+  USHORT NumberFeatureButtonCaps;
+  USHORT NumberFeatureValueCaps;
+  USHORT NumberFeatureDataIndices;
+} HIDP_CAPS, *PHIDP_CAPS;
+*/
+
+StructGetHIDP_CAPS(ByRef data){
+	; ToDo: Why is NumberLinkCollectionNodes @ offset 44?
+	out := {
+	(Join,
+		Usage: NumGet(data, 0, "UShort")
+		UsagePage: NumGet(data, 2, "UShort")
+		InputReportByteLength: NumGet(data, 4, "UShort")
+		OutputReportByteLength: NumGet(data, 6, "UShort")
+		FeatureReportByteLength: NumGet(data, 8, "UShort")
+		Reserved: NumGet(data, 10, "UShort")
+		NumberLinkCollectionNodes: NumGet(data, 44, "UShort")
+		NumberInputButtonCaps: NumGet(data, 46, "UShort")
+		NumberInputValueCaps: NumGet(data, 48, "UShort")
+		NumberInputDataIndices: NumGet(data, 50, "UShort")
+		NumberOutputButtonCaps: NumGet(data, 52, "UShort")
+		NumberOutputDataIndices: NumGet(data, 54, "UShort")
+		NumberFeatureButtonCaps: NumGet(data, 56, "UShort")
+		NumberFeatureDataIndices: NumGet(data, 58, "UShort")
+	)}
+	return out
+}
+
+StructSetHIDP_CAPS(ByRef data){
+	VarSetCapacity(data, 64)
+	return data
+}

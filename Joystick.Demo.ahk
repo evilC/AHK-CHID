@@ -91,8 +91,11 @@ Loop % NumDevices {
     HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
     VarSetCapacity(PreparsedData, ppSize)
     ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
-    CapsArray[handle] := new _Struct("WinStructs.HIDP_CAPS")
-    ret := HID.HidP_GetCaps(PreparsedData, CapsArray[handle][])
+    
+    Cap := StructSetHIDP_CAPS(Cap)
+    HID.HidP_GetCaps(PreparsedData, &Cap)
+    CapsArray[handle] := StructGetHIDP_CAPS(Cap)
+
     Axes := ""
     Hats := 0
     btns := 0
