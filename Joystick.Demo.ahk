@@ -3,7 +3,6 @@
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
 #Include <_Struct>
 
-; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #include <CHID>
 #include Structs.ahk
 
@@ -178,37 +177,15 @@ InputMsg(wParam, lParam) {
     }
 
     if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
-		; Get Preparsed Data
-        ; GetRawInputDeviceInfo
-        ; Pre Optimization: 14-15
-        ; All but size returning removed: 7-8
-        ; Size returning removed: 6-7
-        
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 		
-        ; HidP_GetCaps
-        ; 
-		; Decode button states
-        ; Pre Optimization: 1100-1300
-        ; Struct static: 200-350
-        ; Use Caps decoded on startup: ~0
-        
-		;ret := HID.HidP_GetCaps(PreparsedData, Caps[])
-        
 		btnstring := "Pressed Buttons:`n`n"
 		if (CapsArray[handle].NumberInputButtonCaps) {
 			; ToDo: Loop through ButtonCapsArray[handle][x] - Caps.NumberInputButtonCaps might not be 1
-            ; HidP_GetButtonCaps
-            ; Pre Optimization: ~6500
-            ; No point making struct static as would need array of 8
-            ; Button Caps decoded on startup: ~0
             
 			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
             
-            ; HidP_GetUsages
-            ; Pre Optimization: ~4250
-            ; Static Struct: ~4000
             VarSetCapacity(UsageList, 256)
 			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], ObjRAWINPUT.hid.dwSizeHid)
 			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, ObjRAWINPUT.hid.bRawData, ObjRAWINPUT.hid.dwSizeHid)
@@ -224,15 +201,6 @@ InputMsg(wParam, lParam) {
         axisstring:= "Axes:`n`n"
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
-            ; HidP_GetValueCaps
-            ; Pre Optimization: ~7500
-            ; Value Caps decoded on startup: ~0
-			
-            ; HidP_GetUsageValue Loop (Values for 6-axis xbox pad)
-            ; Pre Optimization: ~108000
-            ; RawData and Size retrieved only once: ~106000
-            ; Page and Min retrieved only once: ~50000
-            ; Axes (UsageMin) and Page cached: ~1600
             VarSetCapacity(value, 4)
             RawData := pRawInput.hid.bRawData[""]
             ;RawData := ObjRAWINPUT.hid.bRawData
