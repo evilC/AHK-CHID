@@ -51,145 +51,145 @@ ValueCapsArray := {}
 
 Gui,ListView,lvDL
 Loop % NumDevices {
-    ; Get device Handle
-    if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
-        continue
-    }
+	; Get device Handle
+	if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
+		continue
+	}
 	handle := DeviceList[A_Index].hDevice
-    
-    ; Get Device Info
-    Data := StructSetRIDI_DEVICEINFO(Data)
-    HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &Data, DevSize)
-    Data := StructGetRIDI_DEVICEINFO(Data)
-    if (Data.dwType != HID.RIM_TYPEHID){
-        ; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
-        continue
-    }
-    
-    DevData[A_Index] := Data
-    
-    ; Find Human name from registry
-    VID := Format("{:04x}", Data.hid.dwVendorID)
-    StringUpper,VID, VID
-    PID := Format("{:04x}", Data.hid.dwProductID)
-    StringUpper,PID, PID
-    if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
-        ; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
-        human_name := "XBOX 360 Controller"
-    } else {
-        key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" VID "&PID_" PID
-        RegRead, human_name, HKLM, % key, OEMName
-    }
-    ; Decode capabilities
-    HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
-    VarSetCapacity(PreparsedData, ppSize)
-    ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
-    
-    Cap := StructSetHIDP_CAPS(Cap)
-    HID.HidP_GetCaps(PreparsedData, &Cap)
-    CapsArray[handle] := StructGetHIDP_CAPS(Cap)
+	
+	; Get Device Info
+	Data := StructSetRIDI_DEVICEINFO(Data)
+	HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &Data, DevSize)
+	Data := StructGetRIDI_DEVICEINFO(Data)
+	if (Data.dwType != HID.RIM_TYPEHID){
+		; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
+		continue
+	}
+	
+	DevData[A_Index] := Data
+	
+	; Find Human name from registry
+	VID := Format("{:04x}", Data.hid.dwVendorID)
+	StringUpper,VID, VID
+	PID := Format("{:04x}", Data.hid.dwProductID)
+	StringUpper,PID, PID
+	if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
+		; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
+		human_name := "XBOX 360 Controller"
+	} else {
+		key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" VID "&PID_" PID
+		RegRead, human_name, HKLM, % key, OEMName
+	}
+	; Decode capabilities
+	HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
+	VarSetCapacity(PreparsedData, ppSize)
+	ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+	
+	Cap := StructSetHIDP_CAPS(Cap)
+	HID.HidP_GetCaps(PreparsedData, &Cap)
+	CapsArray[handle] := StructGetHIDP_CAPS(Cap)
 
-    Axes := ""
-    Hats := 0
-    btns := 0
+	Axes := ""
+	Hats := 0
+	btns := 0
 
-    ; Buttons
-    if (CapsArray[handle].NumberInputButtonCaps) {
-        
-        ButtonCaps := StructSetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
-        HID.HidP_GetButtonCaps(0, &ButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
-        ButtonCapsArray[handle] := StructGetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
-        
-        btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
-    }
-    ; Axes / Hats
-    if (CapsArray[handle].NumberInputValueCaps) {
-        ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
-        HID.HidP_GetValueCaps(0, &ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
-        ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
-        
-        Loop % CapsArray[handle].NumberInputValueCaps {
-            Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin
-            if (Type = 0x39){
-                ; Hat
-                Hats++
-            } else if (Type >= 0x30 && Type <= 0x38) {
-                ; If one of the known 8 standard axes
-                Type -= 0x2F
-                if (Axes != ""){
-                    Axes .= ","
-                }
-                Axes .= AxisNames[Type]
-            }
-        }
-    }
-    ; Update LV
-    if (!btns && Axes = "" && !Hats){
-        continue
-    }
-    if (human_name = ""){
-        human_name := "Unknown"
-    }
+	; Buttons
+	if (CapsArray[handle].NumberInputButtonCaps) {
+		
+		ButtonCaps := StructSetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+		HID.HidP_GetButtonCaps(0, &ButtonCaps, CapsArray[handle].NumberInputButtonCaps, PreparsedData)
+		ButtonCapsArray[handle] := StructGetHIDP_BUTTON_CAPS(ButtonCaps, CapsArray[handle].NumberInputButtonCaps)
+		
+		btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
+	}
+	; Axes / Hats
+	if (CapsArray[handle].NumberInputValueCaps) {
+		ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		HID.HidP_GetValueCaps(0, &ValueCaps, CapsArray[handle].NumberInputValueCaps, PreparsedData)
+		ValueCapsArray[handle] := StructGetHIDP_VALUE_CAPS(ValueCaps, CapsArray[handle].NumberInputValueCaps)
+		
+		Loop % CapsArray[handle].NumberInputValueCaps {
+			Type := (Range:=ValueCapsArray[handle][A_Index].Range).UsageMin
+			if (Type = 0x39){
+				; Hat
+				Hats++
+			} else if (Type >= 0x30 && Type <= 0x38) {
+				; If one of the known 8 standard axes
+				Type -= 0x2F
+				if (Axes != ""){
+					Axes .= ","
+				}
+				Axes .= AxisNames[Type]
+			}
+		}
+	}
+	; Update LV
+	if (!btns && Axes = "" && !Hats){
+		continue
+	}
+	if (human_name = ""){
+		human_name := "Unknown"
+	}
 	LV_Add(,A_INDEX, human_name, btns, Axes, Hats, VID, PID, Data.hid.usUsagePage, Data.hid.usUsage )
 }
 
 return
 
 InputMsg(wParam, lParam) {
-    Critical
-    global HID
-    global SelectedDevice
-    global hAxes, hButtons, hProcessTime
-    global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
+	Critical
+	global HID
+	global SelectedDevice
+	global hAxes, hButtons, hProcessTime
+	global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 	
-    QPX(true)
+	QPX(true)
 
-    static cbSizeHeader := 16
-    If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
+	static cbSizeHeader := 16
+	If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
 		return
-    }
-    
-    ; Use _Struct to build _Struct_pRawInput
-    static _Struct_pRawInput := new _Struct(_StructLib.RAWINPUT)
-    HID.GetRawInputData(lParam, HID.RID_INPUT, _Struct_pRawInput[], pcbSize, cbSizeHeader)
-    
-    ; Use Regular NumGet
-    static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
-    static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
-    if (pcbSize = 0){
-        HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, SizeHeader)
-    }
-    HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
-    Regular_pRawInput := StructGetRAWINPUT(StructRAWINPUT)
-    
-    ;MsgBox % Regular_pRawInput.hid.dwSizeHid "/" _Struct_pRawInput.hid.dwSizeHid
-    
-    ;return
-    handle := Regular_pRawInput.header.hDevice
+	}
+	
+	; Use _Struct to build _Struct_pRawInput
+	static _Struct_pRawInput := new _Struct(_StructLib.RAWINPUT)
+	HID.GetRawInputData(lParam, HID.RID_INPUT, _Struct_pRawInput[], pcbSize, cbSizeHeader)
+	
+	; Use Regular NumGet
+	static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
+	static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
+	if (pcbSize = 0){
+		HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, SizeHeader)
+	}
+	HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
+	Regular_pRawInput := StructGetRAWINPUT(StructRAWINPUT)
+	
+	;MsgBox % Regular_pRawInput.hid.dwSizeHid "/" _Struct_pRawInput.hid.dwSizeHid
+	
+	;return
+	handle := Regular_pRawInput.header.hDevice
 	if (handle = 0)
 		MsgBox error handle 0
 	if (handle != SelectedDevice){
 		return
 	}
-    devtype := Regular_pRawInput.header.dwType
-    if (devtype != HID.RIM_TYPEHID){
-        return
-    }
+	devtype := Regular_pRawInput.header.dwType
+	if (devtype != HID.RIM_TYPEHID){
+		return
+	}
 
-    if (Regular_pRawInput.header.dwType = HID.RIM_TYPEHID){
+	if (Regular_pRawInput.header.dwType = HID.RIM_TYPEHID){
 		ret := HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 		
 		btnstring := "Pressed Buttons:`n`n"
 		if (CapsArray[handle].NumberInputButtonCaps) {
 			; ToDo: Loop through ButtonCapsArray[handle][x] - Caps.NumberInputButtonCaps might not be 1
-            
+			
 			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
-            
-            VarSetCapacity(UsageList, 256)
+			
+			VarSetCapacity(UsageList, 256)
 			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, _Struct_pRawInput.hid.bRawData[""], Regular_pRawInput.hid.dwSizeHid)
 			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, Regular_pRawInput.hid.bRawData, Regular_pRawInput.hid.dwSizeHid)
-            ;MsgBox % _Struct_pRawInput.hid.bRawData[""] " / " Regular_pRawInput.hid.bRawData
+			;MsgBox % _Struct_pRawInput.hid.bRawData[""] " / " Regular_pRawInput.hid.bRawData
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
@@ -198,53 +198,53 @@ InputMsg(wParam, lParam) {
 			}
 		}
 		
-        axisstring:= "Axes:`n`n"
+		axisstring:= "Axes:`n`n"
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
-            VarSetCapacity(value, 4)
-            RawData := _Struct_pRawInput.hid.bRawData[""]
-            ;RawData := Regular_pRawInput.hid.bRawData
-            Size := Regular_pRawInput.hid.dwSizeHid
+			VarSetCapacity(value, 4)
+			RawData := _Struct_pRawInput.hid.bRawData[""]
+			;RawData := Regular_pRawInput.hid.bRawData
+			Size := Regular_pRawInput.hid.dwSizeHid
 
-            ;MsgBox % CapsArray[handle].NumberInputValueCaps
+			;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
-                if (ValueCapsArray[handle][A_Index].UsagePage != 1){
-                    ; Ignore things not on the page we subscribed to.
-                    continue
-                }
+				if (ValueCapsArray[handle][A_Index].UsagePage != 1){
+					; Ignore things not on the page we subscribed to.
+					continue
+				}
 				;r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
 				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, RawData, Size)
 				value := NumGet(value,0,"Short")
 				axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
 		}
-        Ti := QPX(false)
-        GuiControl,,% hButtons, % btnstring
-        GuiControl,,% hAxes, % axisstring
-        GuiControl,,% hProcessTime, % Ti
+		Ti := QPX(false)
+		GuiControl,,% hButtons, % btnstring
+		GuiControl,,% hAxes, % axisstring
+		GuiControl,,% hProcessTime, % Ti
 	}
 
 }
 
 ; Shorthand way of formatting something as 0x0 format Hex
 FormatHex(val){
-    return Format("{:#x}", val+0)
+	return Format("{:#x}", val+0)
 }
 
 SelectDevice:
-    LV_GetText(s, LV_GetNext())
-    if (A_GuiEvent = "i" && s > 0){
-        obj := {}
-        obj.usUsagePage := DevData[s].hid.usUsagePage
-        obj.usUsage := DevData[s].hid.usUsage
-        obj.hwndTarget := WinExist("A") ; A_ScriptHwnd
-        
-        StructSetRAWINPUTDEVICE(RAWINPUTDEVICE, obj)
-        HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
-        SelectedDevice := DeviceList[s].hDevice
-        OnMessage(0x00FF, "InputMsg")
-    }
-    return
+	LV_GetText(s, LV_GetNext())
+	if (A_GuiEvent = "i" && s > 0){
+		obj := {}
+		obj.usUsagePage := DevData[s].hid.usUsagePage
+		obj.usUsage := DevData[s].hid.usUsage
+		obj.hwndTarget := WinExist("A") ; A_ScriptHwnd
+		
+		StructSetRAWINPUTDEVICE(RAWINPUTDEVICE, obj)
+		HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
+		SelectedDevice := DeviceList[s].hDevice
+		OnMessage(0x00FF, "InputMsg")
+	}
+	return
 
 Esc::
 GuiClose:
