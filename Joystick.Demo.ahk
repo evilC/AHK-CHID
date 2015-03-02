@@ -34,8 +34,7 @@ Gui, Add, Text, % "hwndhProcessTime w50 ys"
 
 Gui, Show,, Joystick Info
 
-;HID := new CHID()
-HID := new CHID_BuiltInStructs()
+HID := new CHID()
 HID.GetRawInputDeviceList(0, NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
 
 DeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
@@ -164,11 +163,15 @@ InputMsg(wParam, lParam) {
     static pRawInput := new _Struct(WinStructs.RAWINPUT)
     HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
     
-    cbSizeHeader := HID.StructSetRAWINPUT(StructRAWINPUT)
-    HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader)
-    ObjRAWINPUT := HID.StructGetRAWINPUT(StructRAWINPUT)
+    static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
+    static SizeHeader := StructGetRAWINPUTHeaderSize()
+    if (pcbSize = 0){
+        HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, SizeHeader)
+    }
+    HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
+    ObjRAWINPUT := StructGetRAWINPUT(StructRAWINPUT)
     
-    ;MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
+    MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
     
     ;return
     handle := pRawInput.header.hDevice
