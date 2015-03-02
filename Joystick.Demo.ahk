@@ -35,12 +35,14 @@ Gui, Add, Text, % "hwndhProcessTime w50 ys"
 Gui, Show,, Joystick Info
 
 HID := new CHID()
-HID.GetRawInputDeviceList(0, NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
 
-DeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
-HID.GetRawInputDeviceList(DeviceList[], NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
+DeviceSize := SizeGetRAWINPUTDEVICE()
+HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
 
-HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO, 0, DevSize)
+DeviceList := StructSetRAWINPUTDEVICELIST(DeviceList, NumDevices)
+HID.GetRawInputDeviceList(&DeviceList, NumDevices, DeviceSize)
+DeviceList := StructGetRAWINPUTDEVICELIST(DeviceList, NumDevices)
+
 AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 DevData := []
 

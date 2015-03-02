@@ -49,20 +49,25 @@ StructSetRAWINPUT(ByRef RawInput := 0, data := 0){
 	return RawInput
 }
 
-StructGetRAWINPUTDEVICELIST(data){
-	/*
-	typedef struct tagRAWINPUTDEVICELIST {
-	  HANDLE hDevice;
-	  DWORD  dwType;
-	} RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
-	*/
-	
-	RAWINPUTDEVICELIST := {
-	(Join,
-		_size: 8
-		hDevice: NumGet(data, 0, "Uint")
-		dwType: NumGet(data, 4, "Uint")
-	)}	
-	return RAWINPUTDEVICELIST
+SizeGetRAWINPUTDEVICE(){
+	return 8
+}
 
+StructGetRAWINPUTDEVICELIST(ByRef data, NumDevices){
+	out := []
+	Loop % NumDevices {
+		b := (8 * (A_Index - 1))
+		out[A_Index] := {
+		(Join,
+			_size: 8
+			hDevice: NumGet(data, b, "Uint")
+			dwType: NumGet(data, b + 4, "Uint")
+		)}
+	}
+	return out
+}
+
+StructSetRAWINPUTDEVICELIST(ByRef arr, NumDevices){
+	VarSetCapacity(arr, 8 * NumDevices)
+	return arr
 }
