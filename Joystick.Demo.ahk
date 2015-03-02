@@ -232,18 +232,13 @@ InputMsg(wParam, lParam) {
             ; HidP_GetUsages
             ; Pre Optimization: ~4250
             ; Static Struct: ~4000
-			static UsageList := new _Struct("UShort[128]")
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList[], UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
-            ;VarSetCapacity(RawData, 4)
-			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList[], UsageLength, PreparsedData, RawData, ObjRAWINPUT.hid.dwSizeHid)
-            ;NumPut(0,&RawData)
+            VarSetCapacity(UsageList, 256)
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
 				}
-				btnstring .= UsageList[A_Index]
-				;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
-                ;btnstring .= NumGet(&UsageList,(A_Index-1)*4,"UShort")
+				btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
 			}
 		}
 		
