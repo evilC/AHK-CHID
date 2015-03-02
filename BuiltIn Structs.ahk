@@ -1,4 +1,27 @@
 StructGetRAWINPUT(ByRef data){
+	/*
+		typedef struct tagRAWINPUT {
+		  RAWINPUTHEADER header;
+		  union {
+			RAWMOUSE    mouse;
+			RAWKEYBOARD keyboard;
+			RAWHID      hid;
+		  } data;
+		} RAWINPUT, *PRAWINPUT, *LPRAWINPUT;
+		
+		typedef struct tagRAWINPUTHEADER {
+		  DWORD  dwType;
+		  DWORD  dwSize;
+		  HANDLE hDevice;
+		  WPARAM wParam;
+		} RAWINPUTHEADER, *PRAWINPUTHEADER;
+
+		typedef struct tagRAWHID {
+		  DWORD dwSizeHid;
+		  DWORD dwCount;
+		  BYTE  bRawData[1];
+		} RAWHID, *PRAWHID, *LPRAWHID;
+	*/
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 	static RAWINPUT := {}
 	;RAWINPUT.header.dwType := NumGet(data, 0, "Uint")

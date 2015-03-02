@@ -171,21 +171,21 @@ InputMsg(wParam, lParam) {
     HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, SizeHeader)
     ObjRAWINPUT := StructGetRAWINPUT(StructRAWINPUT)
     
-    MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
+    ;MsgBox % ObjRAWINPUT.hid.dwSizeHid "/" pRawInput.hid.dwSizeHid
     
     ;return
-    handle := pRawInput.header.hDevice
+    handle := ObjRAWINPUT.header.hDevice
 	if (handle = 0)
 		MsgBox error handle 0
 	if (handle != SelectedDevice){
 		return
 	}
-    devtype := pRawInput.header.dwType
+    devtype := ObjRAWINPUT.header.dwType
     if (devtype != HID.RIM_TYPEHID){
         return
     }
 
-    if (pRawInput.header.dwType = HID.RIM_TYPEHID){
+    if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
 		; Get Preparsed Data
         ; GetRawInputDeviceInfo
         ; Pre Optimization: 14-15
@@ -220,6 +220,7 @@ InputMsg(wParam, lParam) {
 			static UsageList := new _Struct("UShort[128]")
 			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList[], UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
             ;VarSetCapacity(RawData, 4)
+			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, UsageList[], UsageLength, PreparsedData, RawData, ObjRAWINPUT.hid.dwSizeHid)
             ;NumPut(0,&RawData)
 			Loop % UsageLength {
 				if (A_Index > 1){
@@ -245,7 +246,8 @@ InputMsg(wParam, lParam) {
             ; Axes (UsageMin) and Page cached: ~1600
             VarSetCapacity(value, 4)
             RawData := pRawInput.hid.bRawData[""]
-            Size := pRawInput.hid.dwSizeHid
+            ;RawData := ObjRAWINPUT.hid.bRawData
+            Size := ObjRAWINPUT.hid.dwSizeHid
 
             ;MsgBox % CapsArray[handle].NumberInputValueCaps
 			Loop % CapsArray[handle].NumberInputValueCaps {
