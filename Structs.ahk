@@ -1,6 +1,7 @@
 /*
 RAWINPUT structure
 Used in GetRawInputData calls: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
+sizeof(RAWINPUTHEADER) = 16
 
 typedef struct tagRAWINPUT {
   RAWINPUTHEADER header;
@@ -42,7 +43,7 @@ StructGetRAWINPUT(ByRef data){
 		(Join,
 			dwSizeHid: NumGet(data, 16, "Uint")
 			dwCount: NumGet(data, 20, "Uint")
-			bRawData: NumGet(data, 24, "Char")
+			bRawData: NumGet(data, 24, "UChar")
 		)}
 	}
 	return RAWINPUT
@@ -380,7 +381,8 @@ StructGetHIDP_VALUE_CAPS(ByRef data, NumCaps){
 			PhysicalMin: NumGet(data, b + 48, "int")
 			PhysicalMax: NumGet(data, b + 52, "int")
 		)}
-		if (out[A_Index].IsRange || 1){
+		; ToDo: Why is IsRange not 1?
+		;if (out[A_Index].IsRange)
 			out[A_Index].Range := {
 			(Join,
 				UsageMin: NumGet(data, b + 56, "UShort")
@@ -392,7 +394,7 @@ StructGetHIDP_VALUE_CAPS(ByRef data, NumCaps){
 				DataIndexMin: NumGet(data, b + 68, "UShort")
 				DataIndexMax: NumGet(data, b + 70, "UShort")
 			)}
-			
+		/*	
 		} else {
 			out[A_Index].NotRange := {
 			(Join,
@@ -406,6 +408,7 @@ StructGetHIDP_VALUE_CAPS(ByRef data, NumCaps){
 				Reserved4: NumGet(data, 70, "UShort")
 			)}
 		}
+		*/
 	}
 	return out
 }
@@ -413,4 +416,65 @@ StructGetHIDP_VALUE_CAPS(ByRef data, NumCaps){
 StructSetHIDP_VALUE_CAPS(ByRef data, NumCaps){
 	VarSetCapacity(data, (72 * NumCaps))
 	return data
+}
+
+; =============================
+; Structure definitions for the _Struct library
+class _StructLib {
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms645578(v=vs.85).aspx
+	static RAWMOUSE := "
+	(
+		USHORT usFlags;
+		{
+			ULONG  ulButtons;
+			{
+				USHORT usButtonFlags;
+				USHORT usButtonData;
+			};
+		};
+		ULONG  ulRawButtons;
+		LONG   lLastX;
+		LONG   lLastY;
+		ULONG  ulExtraInformation;
+	)"
+	
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms645575(v=vs.85).aspx
+	static RAWKEYBOARD := "
+	(
+		USHORT MakeCode;
+		USHORT Flags;
+		USHORT Reserved;
+		USHORT VKey;
+		UINT   Message;
+		ULONG  ExtraInformation;
+	)"
+	
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms645549(v=vs.85).aspx
+	static RAWHID := "
+	(
+		DWORD dwSizeHid;
+		DWORD dwCount;
+		BYTE  bRawData[1];
+	)"
+	
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms645571(v=vs.85).aspx
+	static RAWINPUTHEADER := "
+	(
+		DWORD  dwType;
+		DWORD  dwSize;
+		HANDLE hDevice;
+		WPARAM wParam;
+	)"
+	
+	; https://msdn.microsoft.com/en-us/library/windows/desktop/ms645562(v=vs.85).aspx
+	static RAWINPUT := "
+	(
+		_StructLib.RAWINPUTHEADER header;
+		{
+			_StructLib.RAWMOUSE    mouse;
+			_StructLib.RAWKEYBOARD keyboard;
+			_StructLib.RAWHID      hid;
+		}
+		BYTE buffer[49]; // buffer as the structure might differe for devices. ToDo: check on x64
+	)"
 }

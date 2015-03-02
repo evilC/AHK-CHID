@@ -1,13 +1,11 @@
 ; DEPENDENCIES:
 ; _Struct():  https://raw.githubusercontent.com/HotKeyIt/_Struct/master/_Struct.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/_Struct.htm
 ; sizeof(): https://raw.githubusercontent.com/HotKeyIt/_Struct/master/sizeof.ahk - docs: http://www.autohotkey.net/~HotKeyIt/AutoHotkey/sizeof.htm
-; WinStructs: https://github.com/ahkscript/WinStructs
 #Include <_Struct>
-#Include <WinStructs>
 
 ; REQUIRES TEST BUILD OF AHK FROM http://ahkscript.org/boards/viewtopic.php?f=24&t=5802#p33610
 #include <CHID>
-#include BuiltIn Structs.ahk
+#include Structs.ahk
 
 #singleinstance force
 SetBatchLines -1
@@ -170,14 +168,16 @@ InputMsg(wParam, lParam) {
 	
     QPX(true)
 
-    static cbSizeHeader := sizeof("WinStructs.RAWINPUTHEADER")
+    static cbSizeHeader := 16
     If (HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)){
 		return
     }
     
-    static pRawInput := new _Struct(WinStructs.RAWINPUT)
+    ; Use _Struct to build pRawInput
+    static pRawInput := new _Struct(_StructLib.RAWINPUT)
     HID.GetRawInputData(lParam, HID.RID_INPUT, pRawInput[], pcbSize, cbSizeHeader)
     
+    ; Use native NumGet
     static StructRAWINPUT := StructSetRAWINPUT(StructRAWINPUT)
     static SizeHeader := StructGetRAWINPUT(StructRAWINPUT).header._size
     if (pcbSize = 0){
@@ -233,7 +233,9 @@ InputMsg(wParam, lParam) {
             ; Pre Optimization: ~4250
             ; Static Struct: ~4000
             VarSetCapacity(UsageList, 256)
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], pRawInput.hid.dwSizeHid)
+			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, pRawInput.hid.bRawData[""], ObjRAWINPUT.hid.dwSizeHid)
+			;ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, ObjRAWINPUT.hid.bRawData, ObjRAWINPUT.hid.dwSizeHid)
+            ;MsgBox % pRawInput.hid.bRawData[""] " / " ObjRAWINPUT.hid.bRawData
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
