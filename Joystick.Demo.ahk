@@ -39,25 +39,24 @@ BuildDeviceList(){
 	HID := new CHID()
 
 	; Build Device List ===========================================================
-	DeviceSize := 8 ; sizeof(RAWINPUTDEVICELIST)
+	DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
 	HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
-
-	VarSetCapacity(Data, 8 * NumDevices)
-	HID.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
 	DeviceList := []
+
+	VarSetCapacity(Data, DeviceSize * NumDevices)
+	HID.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
 	Loop % NumDevices {
-		b := (8 * (A_Index - 1))
+		b := (DeviceSize * (A_Index - 1))
 		DeviceList[A_Index] := {
 		(Join,
-			_size: 8
+			_size: DeviceSize
 			hDevice: NumGet(data, b, "Uint")
-			dwType: NumGet(data, b + 4, "Uint")
+			dwType: NumGet(data, b + A_PtrSize, "Uint")
 		)}
 	}
 
 	AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 	DevData := []
-
 	SelectedDevice := 0
 	; Store data that does not change for WM_INPUT calls
 	CapsArray := {}
@@ -285,6 +284,8 @@ BuildDeviceList(){
 	}
 }
 
+return
+
 ; Register for WM_INPUT messages ==============================================
 SelectDevice:
 	SelectDevice()
@@ -295,7 +296,8 @@ SelectDevice(){
 	
 	LV_GetText(s, LV_GetNext())
 	if (A_GuiEvent = "i" && s > 0){
-		static RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, 12)
+		static DevSize := 8 + A_PtrSize
+		static RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, DevSize)
 		
 		NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
 		NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
@@ -303,7 +305,7 @@ SelectDevice(){
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 		
-		HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, 12)
+		r := HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
 		SelectedDevice := DeviceList[s].hDevice
 		OnMessage(0x00FF, "InputMsg")
 	}
@@ -319,9 +321,11 @@ InputMsg(wParam, lParam) {
 	global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 	
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-	static cbSizeHeader := 16
+	static cbSizeHeader := 8 + (A_PtrSize * 2)
 	static pcbSize := 0
+	; ToDo: Dont think StructRAWINPUT size is right on x64
 	static StructRAWINPUT := StaticSetCapacity(StructRAWINPUT, 40)
+	static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
 	
 	QPX(true)
 
@@ -337,20 +341,21 @@ InputMsg(wParam, lParam) {
 		dwType: NumGet(StructRAWINPUT, 0, "Uint")
 		dwSize: NumGet(StructRAWINPUT, 4, "Uint")
 		hDevice: NumGet(StructRAWINPUT, 8, "Uint")
-		wParam: NumGet(StructRAWINPUT, 12, "Uint")
+		wParam: NumGet(StructRAWINPUT, 8 + A_PtrSize, "Uint")
 	)}
+	b := cbSizeHeader
 	if (ObjRAWINPUT.header.dwType = RIM_TYPEHID){
 		ObjRAWINPUT.hid := {
 		(Join,
-			dwSizeHid: NumGet(StructRAWINPUT, 16, "Uint")
-			dwCount: NumGet(StructRAWINPUT, 20, "Uint")
-			bRawData: NumGet(StructRAWINPUT, 24, "UChar")
+			dwSizeHid: NumGet(StructRAWINPUT, b, "Uint")
+			dwCount: NumGet(StructRAWINPUT, b + 4, "Uint")
+			bRawData: NumGet(StructRAWINPUT, b + 8, "UChar")
 		)}
 	}
 	
 	handle := ObjRAWINPUT.header.hDevice
 	if (handle = 0)
-		MsgBox error handle 0
+		MsgBox % "Error: handle is 0"
 	if (handle != SelectedDevice){
 		return
 	}
@@ -370,7 +375,7 @@ InputMsg(wParam, lParam) {
 			UsageLength := btns
 			
 			VarSetCapacity(UsageList, 256)
-			ret := HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + 24, ObjRAWINPUT.hid.dwSizeHid)
+			HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
 					btnstring .= ","
@@ -390,7 +395,7 @@ InputMsg(wParam, lParam) {
 					; Ignore things not on the page we subscribed to.
 					continue
 				}
-				r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, &StructRAWINPUT + 24, ObjRAWINPUT.hid.dwSizeHid)
+				HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
 				value := NumGet(value,0,"Short")
 				axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
 			}
