@@ -324,7 +324,7 @@ InputMsg(wParam, lParam) {
 	static cbSizeHeader := 8 + (A_PtrSize * 2)
 	static pcbSize := 0
 	; ToDo: Dont think StructRAWINPUT size is right on x64
-	static StructRAWINPUT := StaticSetCapacity(StructRAWINPUT, 40)
+	static StructRAWINPUT := StaticSetCapacity(StructRAWINPUT, (A_PtrSize * 4) + 24)
 	static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
 	
 	QPX(true)
@@ -374,12 +374,14 @@ InputMsg(wParam, lParam) {
 			btns := (Range:=ButtonCapsArray[handle].1.Range).UsageMax - Range.UsageMin + 1
 			UsageLength := btns
 			
-			VarSetCapacity(UsageList, 256)
+			static UsageList := StaticSetCapacity(UsageList, 512)
+			;static UsageList := StaticSetCapacity(UsageList, 256)
 			HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
-					btnstring .= ","
+					btnstring .= ", "
 				}
+				; ToDo: This should be an array of USHORTs? Why do we have to use a size of 4 per button?
 				;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
 				btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
 			}
@@ -388,8 +390,7 @@ InputMsg(wParam, lParam) {
 		axisstring:= "Axes:`n`n"
 		; Decode Axis States
 		if (CapsArray[handle].NumberInputValueCaps){
-			VarSetCapacity(value, 4)
-			;MsgBox % CapsArray[handle].NumberInputValueCaps
+			static value := StaticSetCapacity(value, 4)
 			Loop % CapsArray[handle].NumberInputValueCaps {
 				if (ValueCapsArray[handle][A_Index].UsagePage != 1){
 					; Ignore things not on the page we subscribed to.
