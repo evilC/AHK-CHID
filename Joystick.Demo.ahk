@@ -1,3 +1,17 @@
+/*
+ToDo: 
+Investigate why vJoy stick does not get messages under these circumstances:
+1) Speedlink "Generic USB Joystick" is plugged in at startup.
+2) Code is executing under x64
+In this case, no message for handle of vJoy stick gets sent.
+If you unplug the "bad" stick + start up, then plug in bad stick, you can see the messages for the bad stick get ignored.
+
+Intersting facts:
+1) The bad stick is always the first in the list.
+2) The handle for the stick is abnormally large.
+3) The handle for this stick sometimes changes, whereas the others do not.
+4) The bad stick is a generic 4-axis psx-style gamepad with an "analog" button. There appear to be two Z axes, though they always read the same. 
+*/
 #include <CHID>
 
 #singleinstance force
@@ -352,20 +366,26 @@ InputMsg(wParam, lParam) {
 	}
 	
 	handle := ObjRAWINPUT.header.hDevice
-	if (handle = 0)
+	if (handle = 0){
+		QPX(false)
 		MsgBox % "Error: handle is 0"
+		return
+	}
 	
 	if (handle != SelectedDevice){
-		MsgBox % "Got message for different handle: " handle
+		; Message arrived for diff handle.
+		; This is to be expected, as most sticks are UsagePage/Usage 1/4.
+		ToolTip % "Ignoring " handle
 		QPX(false)
 		return
 	}
 	devtype := ObjRAWINPUT.header.dwType
 	if (devtype != HID.RIM_TYPEHID){
+		MsgBox % "Wrong Device Type: " devtype
 		QPX(false)
 		return
 	}
-
+	
 	;ToolTip % "L: " CapsArray[handle].InputReportByteLength
 	if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
 		; ToDo: ppSize should be cached on CapsArray or something.
