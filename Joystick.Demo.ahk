@@ -43,6 +43,62 @@ Gui, Show,, Joystick Info
 BuildDeviceList()
 return
 
+class CHIDHelper extends CHID {
+	class RAWINPUTDEVICELIST {
+		DeviceList := []
+		__New(){
+			static DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
+			CHID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
+			this.NumDevices := NumDevices
+			this.DeviceSize := DeviceSize
+			VarSetCapacity(Data, DeviceSize * this.NumDevices)
+			CHID.GetRawInputDeviceList(&Data, this.NumDevices, this.DeviceSize)
+			Loop % this.NumDevices {
+				b := (DeviceSize * (A_Index - 1))
+				this.DeviceList[A_Index] := {
+				(Join,
+					_size: DeviceSize
+					hDevice: NumGet(data, b, "Uint")
+					dwType: NumGet(data, b + A_PtrSize, "Uint")
+				)}
+				OutputDebug, % "DeviceList: Adding handle " this.DeviceList[A_Index].hDevice
+			}
+		}
+		
+		__Get(aParam){
+			if (aParam is Numeric){
+				return this.DeviceList[aParam]
+			}
+		}
+	}
+	
+	class RID_DEVICE_INFO {
+		__New(handle){
+			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+			static DevSize := 32
+			
+			VarSetCapacity(RID_DEVICE_INFO, DevSize)
+			NumPut(DevSize, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
+			CHID.GetRawInputDeviceInfo(handle, CHID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+			
+			this.Data := {}
+			this.Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
+			this.Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
+			if (this.Data.dwType = RIM_TYPEHID){
+				this.Data.hid := {
+				(Join,
+					dwVendorId: NumGet(RID_DEVICE_INFO, 8, "Uint")
+					dwProductId: NumGet(RID_DEVICE_INFO, 12, "Uint")
+					dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
+					usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
+					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
+				)}
+			}
+
+		}
+	}
+}
+
 BuildDeviceList(){
 	global HID
 	global SelectedDevice, DeviceList, DevData
@@ -51,9 +107,15 @@ BuildDeviceList(){
 
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 
-	HID := new CHID()
-
+	OutputDebug, DBGVIEWCLEAR
+	
+	;HID := new CHID()
+	HID := new CHIDHelper()
+	
+	DeviceList := new HID.RAWINPUTDEVICELIST()
+	
 	; Build Device List ===========================================================
+	/*
 	DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
 	HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
 	DeviceList := []
@@ -68,7 +130,7 @@ BuildDeviceList(){
 			dwType: NumGet(data, b + A_PtrSize, "Uint")
 		)}
 	}
-
+	*/
 	AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 	DevData := []
 	SelectedDevice := 0
@@ -78,13 +140,16 @@ BuildDeviceList(){
 	ValueCapsArray := {}
 
 	Gui,ListView,lvDL
-	Loop % NumDevices {
+	Loop % DeviceList.NumDevices {
 		; Get device Handle
 		if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
 			;continue
 		}
 		handle := DeviceList[A_Index].hDevice
 		
+		DevInfo := new HID.RID_DEVICE_INFO(handle)
+		OutputDebug, % "Getting Device Info for " DevInfo.Data.hid.dwVendorID
+		/*
 		; Get Device Info
 		VarSetCapacity(RID_DEVICE_INFO, 32)
 		NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
@@ -104,26 +169,29 @@ BuildDeviceList(){
 				usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
 			)}
 		}
-
-		if (Data.dwType != HID.RIM_TYPEHID){
+		*/
+		;Data := DevInfo.Data
+		if (DevInfo.Data.dwType != HID.RIM_TYPEHID){
 			; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
 			continue
 		}
 		
-		DevData[A_Index] := Data
+		DevData[A_Index] := DevInfo.Data
 		
 		; Find Human name from registry
-		VID := Format("{:04x}", Data.hid.dwVendorID)
+		VID := Format("{:04x}", DevData[A_Index].hid.dwVendorID)
 		StringUpper,VID, VID
-		PID := Format("{:04x}", Data.hid.dwProductID)
+		PID := Format("{:04x}", DevData[A_Index].hid.dwProductID)
 		StringUpper,PID, PID
-		if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
+		if (DevData[A_Index].hid.dwVendorID = 0x45E && DevData[A_Index].hid.dwProductID = 0x28E){
 			; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
 			human_name := "XBOX 360 Controller"
 		} else {
 			key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" VID "&PID_" PID
 			RegRead, human_name, HKLM, % key, OEMName
 		}
+		
+		
 		; Decode capabilities
 		HID.GetRawInputDeviceInfo(handle, HID.RIDI_PREPARSEDDATA, 0, ppSize)
 		VarSetCapacity(PreparsedData, ppSize)
@@ -294,7 +362,7 @@ BuildDeviceList(){
 		if (human_name = ""){
 			human_name := "Unknown"
 		}
-		LV_Add(,A_INDEX, human_name, btns, Axes, Hats, VID, PID, Data.hid.usUsagePage, Data.hid.usUsage, handle )
+		LV_Add(,A_INDEX, human_name, btns, Axes, Hats, VID, PID, DevData[A_Index].hid.usUsagePage, DevData[A_Index].hid.usUsage, handle )
 	}
 }
 
@@ -376,6 +444,7 @@ InputMsg(wParam, lParam) {
 		; Message arrived for diff handle.
 		; This is to be expected, as most sticks are UsagePage/Usage 1/4.
 		ToolTip % "Ignoring " handle
+		OutputDebug, % "Ignoring WM_INPUT from handle " handle "(Selected Device = " SelectedDevice ")"
 		QPX(false)
 		return
 	}
@@ -385,7 +454,9 @@ InputMsg(wParam, lParam) {
 		QPX(false)
 		return
 	}
-	
+
+	OutputDebug, % "Processing WM_INPUT from handle " handle "(Selected Device = " SelectedDevice ")"
+
 	;ToolTip % "L: " CapsArray[handle].InputReportByteLength
 	if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
 		; ToDo: ppSize should be cached on CapsArray or something.
