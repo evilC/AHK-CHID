@@ -59,7 +59,7 @@ Class CHID {
 		return %ErrorString% 
 	}
 
-	RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize := 0){
+	RegisterRawInputDevices(ByRef pRawInputDevices, uiNumDevices, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
 		
@@ -75,9 +75,7 @@ Class CHID {
 		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )
 	}
 	
-	;GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
-	;GetRawInputDeviceList(pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
-	GetRawInputDeviceList(pRawInputDeviceList := 0, puiNumDevices := 0, cbSize := 0){
+	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -93,8 +91,7 @@ Class CHID {
 		
 		Uses RAWINPUTDEVICELIST structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
 		*/
-		;return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
-		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "Ptr", puiNumDevices, "UInt", cbSize )
+		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
 	}
 	
 	GetRawInputDeviceInfo(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
@@ -117,31 +114,6 @@ Class CHID {
 		Uses RID_DEVICE_INFO structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645581%28v=vs.85%29.aspx
 		*/
 		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
-		*/
-	}
-	
-	;GetRawInputDeviceInfoNew(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
-	GetRawInputDeviceInfoNew(hDevice, uiCommand := 0, pData := 0, pcbSize := 0){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
-		
-		UINT WINAPI GetRawInputDeviceInfo(
-		  _In_opt_     HANDLE hDevice,		// A handle to the raw input device. This comes from the lParam of the WM_INPUT message, from the hDevice member of RAWINPUTHEADER
-											// or from GetRawInputDeviceList.
-		  _In_         UINT uiCommand,		// Specifies what data will be returned in pData. This parameter can be one of the following values:
-											// RIDI_DEVICENAME 0x20000007 -		pData points to a string that contains the device name.
-											//									For this uiCommand only, the value in pcbSize is the character count (not the byte count).
-											// RIDI_DEVICEINFO 0x2000000b -		pData points to an RID_DEVICE_INFO structure.
-											// RIDI_PREPARSEDDATA 0x20000005 -	pData points to the previously parsed data.
-		  _Inout_opt_  LPVOID pData,		// A pointer to a buffer that contains the information specified by uiCommand.
-											// If uiCommand is RIDI_DEVICEINFO, set the cbSize member of RID_DEVICE_INFO to sizeof(RID_DEVICE_INFO) before calling GetRawInputDeviceInfo.
-		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
-		);
-		
-		Uses RID_DEVICE_INFO structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645581%28v=vs.85%29.aspx
-		*/
-		;return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
-		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "Ptr", pcbSize)
 		*/
 	}
 	
