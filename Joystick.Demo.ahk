@@ -13,8 +13,6 @@ Intersting facts:
 4) The bad stick is a generic 4-axis psx-style gamepad with an "analog" button. There appear to be two Z axes, though they always read the same. 
 */
 #include <CHID>
-#Include <_Struct>
-#Include <WinStructs>
 
 #singleinstance force
 SetBatchLines -1
@@ -84,7 +82,7 @@ BuildDeviceList(){
 	Loop % NumDevices {
 		; Get device Handle
 		if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
-			;continue
+			continue
 		}
 		handle := DeviceList[A_Index].hDevice
 		
@@ -110,8 +108,6 @@ BuildDeviceList(){
 		;Data := DevInfo.Data
 		DevData[A_Index] := Data
 
-		OutputDebug, % "Getting Device Info for " DevData[A_Index].hid.dwVendorID
-		
 		if (DevData[A_Index].dwType != HID.RIM_TYPEHID){
 			; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
 			;continue
