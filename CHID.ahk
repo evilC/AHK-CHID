@@ -70,7 +70,7 @@ class CHID {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	
@@ -140,8 +140,109 @@ class CHID {
 	}
 	
 	_MessageHandler(wParam, lParam){
+		Critical
+		global hAxes, hButtons, hProcessTime
+		
+		static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+		static cbSizeHeader := 8 + (A_PtrSize * 2)
+		static StructRAWINPUT,init:= VarSetCapacity(StructRAWINPUT, 10240)
+		static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
+		QPX(true)
+		
+		; Get handle of device that message is for
+		DLLWrappers.GetRawInputData(lParam, this.RID_INPUT, 0, pcbSize, cbSizeHeader)
+		;VarSetCapacity(StructRAWINPUT, pcbSize)
+		if (!ret:=DLLWrappers.GetRawInputData(lParam, this.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader))
+			MsgBox % this.ErrMsg() "`n" pcbSize "`n" ret
+		
+		ObjRAWINPUT := {}
+		ObjRAWINPUT.header := {
+		(Join,
+			_size: 16
+			dwType: NumGet(StructRAWINPUT, 0, "Uint")
+			dwSize: NumGet(StructRAWINPUT, 4, "Uint")
+			hDevice: NumGet(StructRAWINPUT, 8, "Uint")
+			wParam: NumGet(StructRAWINPUT, 8 + A_PtrSize, "Uint")
+		)}
+		b := cbSizeHeader
+		if (ObjRAWINPUT.header.dwType = RIM_TYPEHID){
+			ObjRAWINPUT.hid := {
+			(Join,
+				dwSizeHid: NumGet(StructRAWINPUT, b, "Uint")
+				dwCount: NumGet(StructRAWINPUT, b + 4, "Uint")
+				bRawData: NumGet(StructRAWINPUT, b + 8, "UChar")
+			)}
+		}
+
+		if (ObjRAWINPUT.header.dwType != this.RIM_TYPEHID){
+			return
+		}
+
+		handle := ObjRAWINPUT.header.hDevice
+		device := this.DevicesByHandle[handle]
+		
 		; Check this.RegisteredDevices to see if this specific handle was registered
-		;SoundBeep
+		Loop % this.RegisteredDevices.MaxIndex() {
+			if (this.RegisteredDevices[A_Index] = handle){
+				; Tell the device to get preparsed data and update
+				;this.DevicesByHandle[handle].GetPreparsedData(ObjRAWINPUT)
+				; ToDo: ppSize should be cached on CapsArray or something.
+				DLLWrappers.GetRawInputDeviceInfo(handle, this.RIDI_PREPARSEDDATA, 0, ppSize)
+				VarSetCapacity(PreparsedData, ppSize)
+				ret := DLLWrappers.GetRawInputDeviceInfo(handle, this.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+				btnstring := "Pressed Buttons:`n`n"
+				if (device.HIDP_CAPS.NumberInputButtonCaps) {
+					; ToDo: Loop through device.HIDP_BUTTON_CAPS[x] - Caps.NumberInputButtonCaps might not be 1
+					
+					btns := (Range:=device.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
+					UsageLength := btns
+					
+					;static UsageList := StaticSetCapacity(UsageList, 512)
+					static UsageList := VarSetCapacity(UsageList, 512)
+					;ret := DLLWrappers.HidP_GetUsages(0, device.HIDP_BUTTON_CAPS.UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
+					;ret := DLLWrappers.HidP_GetUsages(0, 0, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
+					; ToDo: How Come device.HIDP_BUTTON_CAPS.UsagePage is "", but it still works?
+					; UsagePage of 0 (not usagepage of device) works, but 1 (usage page for all sticks) does not. wtf ?!
+					ret := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", 0, "ushort", 0, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", &StructRAWINPUT + bRawDataOffset, "Uint", ObjRAWINPUT.hid.dwSizeHid)
+					;ToolTip % "ret: " ret "`nUsagePage: " device.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
+					Loop % UsageLength {
+						if (A_Index > 1){
+							btnstring .= ", "
+						}
+						; ToDo: This should be an array of USHORTs? Why do we have to use a size of 4 per button?
+						;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+						btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
+					}
+					ToolTip % btnstring
+				}
+				
+				/*
+				axisstring:= "Axes:`n`n"
+				; Decode Axis States
+				if (device.HIDP_CAPS.NumberInputValueCaps){
+					;static value := StaticSetCapacity(value, 4)
+					;static value := StaticSetCapacity(value, A_PtrSize)
+					VarSetCapacity(value, A_PtrSize)
+					Loop % device.HIDP_CAPS.NumberInputValueCaps {
+						if (ValueCapsArray[handle][A_Index].UsagePage != 1){
+							; Ignore things not on the page we subscribed to.
+							continue
+						}
+						r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
+						;value := NumGet(value,0,"Short")
+						value := NumGet(value,0,"Uint")
+						axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
+					}
+				}
+				*/
+				Ti := QPX(false)
+				GuiControl,,% hButtons, % btnstring
+				GuiControl,,% hAxes, % axisstring
+				GuiControl,,% hProcessTime, % Ti
+
+				break
+			}
+		}
 	}
 	
 	class _CDevice {
@@ -383,6 +484,69 @@ class CHID {
 			this.AxisString := Axes
 			this.NumPOVs := Hats
 		}
+		
+		/*
+		; Called when this device received a WM_INPUT message
+		GetPreparsedData(ObjRAWINPUT){
+			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+			VarSetCapacity(StructRAWINPUT, 10240)
+			static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
+	
+			DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, 0, ppSize)
+			VarSetCapacity(PreparsedData, ppSize)
+			ret := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+			btnstring := "Pressed Buttons:`n`n"
+			if (this.HIDP_CAPS.NumberInputButtonCaps) {
+				; ToDo: Loop through this.HIDP_BUTTON_CAPS[x] - Caps.NumberInputButtonCaps might not be 1
+				
+				btns := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
+				UsageLength := btns
+				
+				VarSetCapacity(UsageList, 512)
+				;MsgBox % this.HIDP_BUTTON_CAPS[1].UsagePage
+				;ret := DLLWrappers.HidP_GetUsages(0, this.HIDP_BUTTON_CAPS.UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
+				ret := DLLWrappers.HidP_GetUsages(0, 1, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
+				ToolTip % "ret: " ret "`nUsagePage: " this.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
+				Loop % UsageLength {
+					if (A_Index > 1){
+						btnstring .= ", "
+					}
+					; ToDo: This should be an array of USHORTs? Why do we have to use a size of 4 per button?
+					;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+					btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
+				}
+			}
+			;ToolTip % btnstring
+		}
+		*/
+	}
+	
+	;----------------------------------------------------------------
+	; Function:     ErrMsg
+	;               Get the description of the operating system error
+	;               
+	; Parameters:
+	;               ErrNum  - Error number (default = A_LastError)
+	;
+	; Returns:
+	;               String
+	;
+	ErrMsg(ErrNum=""){ 
+		if ErrNum=
+			ErrNum := A_LastError
+
+		VarSetCapacity(ErrorString, 1024) ;String to hold the error-message.    
+		DllCall("FormatMessage" 
+			 , "UINT", 0x00001000     ;FORMAT_MESSAGE_FROM_SYSTEM: The function should search the system message-table resource(s) for the requested message. 
+			 , "UINT", 0              ;A handle to the module that contains the message table to search.
+			 , "UINT", ErrNum 
+			 , "UINT", 0              ;Language-ID is automatically retreived 
+			 , "Str",  ErrorString 
+			 , "UINT", 1024           ;Buffer-Length 
+			 , "str",  "")            ;An array of values that are used as insert values in the formatted message. (not used) 
+		
+		StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
+		return %ErrorString% 
 	}
 }
 

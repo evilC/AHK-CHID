@@ -386,6 +386,7 @@ InputMsg(wParam, lParam) {
 			
 			static UsageList := StaticSetCapacity(UsageList, 512)
 			;static UsageList := StaticSetCapacity(UsageList, 256)
+			ToolTip % "UsagePage: *" ButtonCapsArray[handle].UsagePage "*"
 			HID.HidP_GetUsages(0, ButtonCapsArray[handle].UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
 			Loop % UsageLength {
 				if (A_Index > 1){
