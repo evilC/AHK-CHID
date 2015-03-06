@@ -38,9 +38,12 @@ class JoystickTester extends CHID {
 		
 		this.hLV := hLV
 		Loop % this.NumDevices {
-			;VID := Format("{:04x}", this.DeviceListHandler.DeviceList[A_Index].hid.dwVendorID)
 			handle := this.DeviceIndexToHandle[A_Index]
-			LV_Add(,A_Index, handle, , , , ,VID )
+			dev := this.DevicesByHandle[handle]
+			;MsgBox % dev.Type
+			VID := dev.RID_DEVICE_INFO.hid.dwVendorID
+			PID := dev.RID_DEVICE_INFO.hid.dwProductID
+			LV_Add(,A_Index, handle, , , , ,VID, PID )
 			;MsgBox % this.DeviceListHandler.DeviceList[A_Index].hDevice
 		}
 	}
@@ -81,7 +84,7 @@ class CHID {
 				hDevice: NumGet(data, b, "Uint")
 				dwType: NumGet(data, b + A_PtrSize, "Uint")
 			)}
-			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this._RAWINPUTDEVICELIST[A_Index].hDevice)
+			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this._RAWINPUTDEVICELIST[A_Index])
 			this.DeviceIndexToHandle[A_Index] := this._RAWINPUTDEVICELIST[A_Index].hDevice
 			OutputDebug % "Processing Device " this._RAWINPUTDEVICELIST[A_Index].hDevice
 			
@@ -89,8 +92,70 @@ class CHID {
 	}
 	
 	class _CDevice {
-		__New(handle){
+		RID_DEVICE_INFO := {}
+		
+		__New(RAWINPUTDEVICELIST){
+			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+			static DevSize := 32
+			
+			this.handle := RAWINPUTDEVICELIST.hDevice
+			this.type := RAWINPUTDEVICELIST.dwType
+			
+			if (this.Type != RIM_TYPEHID){
+				; Only HID devices supported
+				return
+			}
+			
+			VarSetCapacity(RID_DEVICE_INFO, 32)
+			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
+			r := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+			if (!r){
+				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call"
+			}
+			Data := {}
+			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
+			Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
+			if (Data.dwType = RIM_TYPEHID){
+				Data.hid := {
+				(Join,
+					dwVendorId: Format("{:04x}", NumGet(RID_DEVICE_INFO, 8, "Uint"))
+					dwProductId: Format("{:04x}", NumGet(RID_DEVICE_INFO, 12, "Uint"))
+					dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
+					usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
+					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
+				)}
+			}
+			this.RID_DEVICE_INFO := Data
+
 			; GetRawInputDeviceInfo
+			;return
+			/*
+			if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
+				;continue
+			}
+			handle := DeviceList[A_Index].hDevice
+			
+			; Get Device Info
+			VarSetCapacity(RID_DEVICE_INFO, 32)
+			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
+			static DevSize := 32
+			HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+			
+			Data := {}
+			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
+			Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
+			if (Data.dwType = RIM_TYPEHID){
+				Data.hid := {
+				(Join,
+					dwVendorId: NumGet(RID_DEVICE_INFO, 8, "Uint")
+					dwProductId: NumGet(RID_DEVICE_INFO, 12, "Uint")
+					dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
+					usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
+					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
+				)}
+			}
+			*/
 		}
 	}
 }
