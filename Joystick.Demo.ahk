@@ -19,7 +19,7 @@ Intersting facts:
 #singleinstance force
 SetBatchLines -1
 
-OutputDebug, DBGVIEWCLEAR
+;OutputDebug, DBGVIEWCLEAR
 
 GUI_WIDTH := 701
 
@@ -47,62 +47,6 @@ Gui, Show,, Joystick Info
 BuildDeviceList()
 return
 
-class CHIDHelper extends CHID {
-	class RAWINPUTDEVICELIST {
-		DeviceList := []
-		__New(){
-			static DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
-			CHID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
-			this.NumDevices := NumDevices
-			this.DeviceSize := DeviceSize
-			VarSetCapacity(Data, DeviceSize * this.NumDevices)
-			CHID.GetRawInputDeviceList(&Data, this.NumDevices, this.DeviceSize)
-			Loop % this.NumDevices {
-				b := (DeviceSize * (A_Index - 1))
-				this.DeviceList[A_Index] := {
-				(Join,
-					_size: DeviceSize
-					hDevice: NumGet(data, b, "Uint")
-					dwType: NumGet(data, b + A_PtrSize, "Uint")
-				)}
-				OutputDebug, % "DeviceList: Adding handle " this.DeviceList[A_Index].hDevice
-			}
-		}
-		
-		__Get(aParam){
-			if (aParam is Numeric){
-				return this.DeviceList[aParam]
-			}
-		}
-	}
-	
-	class RID_DEVICE_INFO {
-		__New(handle){
-			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-			static DevSize := 32
-			
-			VarSetCapacity(RID_DEVICE_INFO, DevSize)
-			NumPut(DevSize, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-			CHID.GetRawInputDeviceInfo(handle, CHID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
-			
-			this.Data := {}
-			this.Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
-			this.Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
-			if (this.Data.dwType = RIM_TYPEHID){
-				this.Data.hid := {
-				(Join,
-					dwVendorId: NumGet(RID_DEVICE_INFO, 8, "Uint")
-					dwProductId: NumGet(RID_DEVICE_INFO, 12, "Uint")
-					dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
-					usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
-					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
-				)}
-			}
-
-		}
-	}
-}
-
 BuildDeviceList(){
 	global HID
 	global SelectedDevice, DeviceList, DevData
@@ -111,22 +55,9 @@ BuildDeviceList(){
 
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 
-	;HID := new CHID()
-	HID := new CHIDHelper()
-	
-	SelectvJoyDevice()
-	;DeviceList := new HID.RAWINPUTDEVICELIST()
-	;NumDevices := DeviceList.NumDevices
-	HID.GetRawInputDeviceList(0, NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
-	DeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
-	HID.GetRawInputDeviceList(DeviceList[], NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
-	DeviceList.NumDevices := NumDevices
-
-	HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO, 0, DevSize)
-
+	HID := new CHID()
 	
 	; Build Device List ===========================================================
-	/*
 	DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
 	HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
 	DeviceList := []
@@ -141,7 +72,6 @@ BuildDeviceList(){
 			dwType: NumGet(data, b + A_PtrSize, "Uint")
 		)}
 	}
-	*/
 	AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 	DevData := []
 	SelectedDevice := 0
@@ -158,17 +88,6 @@ BuildDeviceList(){
 		}
 		handle := DeviceList[A_Index].hDevice
 		
-		;DevInfo := new HID.RID_DEVICE_INFO(handle)
-		
-		Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
-		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
-		DevData[A_Index] := Data
-
-		if (DevData[A_Index].hid.dwVendorID = ""){
-			continue
-		}
-
-		/*
 		; Get Device Info
 		VarSetCapacity(RID_DEVICE_INFO, 32)
 		NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
@@ -188,9 +107,8 @@ BuildDeviceList(){
 				usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
 			)}
 		}
-		*/
 		;Data := DevInfo.Data
-		;DevData[A_Index] := DevInfo.Data
+		DevData[A_Index] := Data
 
 		OutputDebug, % "Getting Device Info for " DevData[A_Index].hid.dwVendorID
 		
@@ -402,68 +320,15 @@ SelectDevice(){
 	if (A_GuiEvent = "i" && s > 0){
 		static DevSize := 8 + A_PtrSize
 		RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, DevSize)
-		;NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
-		;NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
-		NumPut(1, RAWINPUTDEVICE, 0, "UShort")
-		NumPut(4, RAWINPUTDEVICE, 2, "UShort")
+		NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
+		NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
 		Flags := 0x00000100 ; RIDEV_INPUTSINK
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 		r := HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
-		;SelectedDevice := DeviceList[s].hDevice
-		SelectedDevice := 131145
-		;MsgBox % "subscribing to`nDevice: " DeviceList[s].hDevice "`nPage: " DevData[s].hid.usUsagePage "`nUsage: " DevData[s].hid.usUsage
+		SelectedDevice := DeviceList[s].hDevice
 		OnMessage(0x00FF, "InputMsg")
 	}
-	return
-}
-
-SelectvJoyDevice(){
-	global HID, SelectedDevice, DeviceList, DevData
-	
-    ; Register Device
-    handle := 131145
-    rid := new _struct(WinStructs.RAWINPUTDEVICE)
-    rid.usUsagePage := 1
-    rid.usUsage := 4
-    rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
-    rid.dwFlags := 0x00000100 ; RIDEV_INPUTSINK
-    
-    ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
-    SelectedDevice := handle
-    OnMessage(0x00FF, "InputMsg")
-    return
-	
-	;handle := DeviceList[s].hDevice
-	handle := 131145
-	rid := new _struct(WinStructs.RAWINPUTDEVICE)
-	rid.usUsagePage := 1
-	rid.usUsage := 4
-	rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
-    rid.dwFlags := 0x00000100 ; RIDEV_INPUTSINK
-	
-	ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
-	SelectedDevice := handle
-	OnMessage(0x00FF, "InputMsg")
-	return
-	
-	static DevSize := 8 + A_PtrSize
-	;RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, DevSize)
-	VarSetCapacity(RAWINPUTDEVICE, DevSize)
-	MsgBox % DevSize
-	;NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
-	;NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
-	NumPut(1, RAWINPUTDEVICE, 0, "UShort")
-	NumPut(4, RAWINPUTDEVICE, 2, "UShort")
-	Flags := 0x00000100 ; RIDEV_INPUTSINK
-	NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
-	hwnd := WinExist("A")
-	NumPut(hwnd, RAWINPUTDEVICE, 8, "Uint")
-	r := HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
-	;SelectedDevice := DeviceList[s].hDevice
-	SelectedDevice := 131145
-	;MsgBox % "subscribing to`nDevice: " DeviceList[s].hDevice "`nPage: " DevData[s].hid.usUsagePage "`nUsage: " DevData[s].hid.usUsage
-	OnMessage(0x00FF, "InputMsg")
 	return
 }
 
@@ -515,7 +380,6 @@ InputMsg(wParam, lParam) {
 	if (handle != SelectedDevice){
 		; Message arrived for diff handle.
 		; This is to be expected, as most sticks are UsagePage/Usage 1/4.
-		OutputDebug, % "Ignoring Message from " handle
 		QPX(false)
 		return
 	}
@@ -525,8 +389,6 @@ InputMsg(wParam, lParam) {
 		QPX(false)
 		return
 	}
-
-	OutputDebug, % "Processing message from handle " handle
 
 	;ToolTip % "L: " CapsArray[handle].InputReportByteLength
 	if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
