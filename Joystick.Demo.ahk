@@ -54,7 +54,7 @@ BuildDeviceList(){
 	global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-	static DevSize := 32
+	static DevInfoSize := 32
 
 	HID := new CHID()
 	
@@ -92,9 +92,12 @@ BuildDeviceList(){
 		handle := DeviceList[A_Index].hDevice
 		
 		; Get Device Info
-		VarSetCapacity(RID_DEVICE_INFO, DevSize)
-		NumPut(DevSize, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+		VarSetCapacity(RID_DEVICE_INFO, DevInfoSize)
+		NumPut(DevInfoSize, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
+		;HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevInfoSize)
+		VarSetCapacity(ds, A_PtrSize)
+		NumPut(DevInfoSize, ds, 0, "uint")
+		HID.GetRawInputDeviceInfoNew(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, &ds)
 		
 		Data := {}
 		Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
