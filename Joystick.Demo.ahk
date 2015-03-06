@@ -13,9 +13,13 @@ Intersting facts:
 4) The bad stick is a generic 4-axis psx-style gamepad with an "analog" button. There appear to be two Z axes, though they always read the same. 
 */
 #include <CHID>
+#Include <_Struct>
+#Include <WinStructs>
 
 #singleinstance force
 SetBatchLines -1
+
+OutputDebug, DBGVIEWCLEAR
 
 GUI_WIDTH := 701
 
@@ -107,12 +111,19 @@ BuildDeviceList(){
 
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 
-	OutputDebug, DBGVIEWCLEAR
-	
 	;HID := new CHID()
 	HID := new CHIDHelper()
 	
-	DeviceList := new HID.RAWINPUTDEVICELIST()
+	SelectvJoyDevice()
+	;DeviceList := new HID.RAWINPUTDEVICELIST()
+	;NumDevices := DeviceList.NumDevices
+	HID.GetRawInputDeviceList(0, NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
+	DeviceList := new _Struct("WinStructs.RAWINPUTDEVICELIST[" NumDevices "]")
+	HID.GetRawInputDeviceList(DeviceList[], NumDevices, sizeof(WinStructs.RAWINPUTDEVICELIST))
+	DeviceList.NumDevices := NumDevices
+
+	HID.GetRawInputDeviceInfo(DeviceList[1].hDevice, HID.RIDI_DEVICEINFO, 0, DevSize)
+
 	
 	; Build Device List ===========================================================
 	/*
@@ -140,15 +151,23 @@ BuildDeviceList(){
 	ValueCapsArray := {}
 
 	Gui,ListView,lvDL
-	Loop % DeviceList.NumDevices {
+	Loop % NumDevices {
 		; Get device Handle
 		if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
 			;continue
 		}
 		handle := DeviceList[A_Index].hDevice
 		
-		DevInfo := new HID.RID_DEVICE_INFO(handle)
-		OutputDebug, % "Getting Device Info for " DevInfo.Data.hid.dwVendorID
+		;DevInfo := new HID.RID_DEVICE_INFO(handle)
+		
+		Data := new _Struct("WinStructs.RID_DEVICE_INFO",{cbSize:Size})
+		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, Data[], DevSize)
+		DevData[A_Index] := Data
+
+		if (DevData[A_Index].hid.dwVendorID = ""){
+			continue
+		}
+
 		/*
 		; Get Device Info
 		VarSetCapacity(RID_DEVICE_INFO, 32)
@@ -171,12 +190,15 @@ BuildDeviceList(){
 		}
 		*/
 		;Data := DevInfo.Data
-		if (DevInfo.Data.dwType != HID.RIM_TYPEHID){
+		;DevData[A_Index] := DevInfo.Data
+
+		OutputDebug, % "Getting Device Info for " DevData[A_Index].hid.dwVendorID
+		
+		if (DevData[A_Index].dwType != HID.RIM_TYPEHID){
 			; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
-			continue
+			;continue
 		}
 		
-		DevData[A_Index] := DevInfo.Data
 		
 		; Find Human name from registry
 		VID := Format("{:04x}", DevData[A_Index].hid.dwVendorID)
@@ -380,16 +402,68 @@ SelectDevice(){
 	if (A_GuiEvent = "i" && s > 0){
 		static DevSize := 8 + A_PtrSize
 		RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, DevSize)
-		NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
-		NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
+		;NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
+		;NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
+		NumPut(1, RAWINPUTDEVICE, 0, "UShort")
+		NumPut(4, RAWINPUTDEVICE, 2, "UShort")
 		Flags := 0x00000100 ; RIDEV_INPUTSINK
 		NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 		NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 		r := HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
-		SelectedDevice := DeviceList[s].hDevice
+		;SelectedDevice := DeviceList[s].hDevice
+		SelectedDevice := 131145
 		;MsgBox % "subscribing to`nDevice: " DeviceList[s].hDevice "`nPage: " DevData[s].hid.usUsagePage "`nUsage: " DevData[s].hid.usUsage
 		OnMessage(0x00FF, "InputMsg")
 	}
+	return
+}
+
+SelectvJoyDevice(){
+	global HID, SelectedDevice, DeviceList, DevData
+	
+    ; Register Device
+    handle := 131145
+    rid := new _struct(WinStructs.RAWINPUTDEVICE)
+    rid.usUsagePage := 1
+    rid.usUsage := 4
+    rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
+    rid.dwFlags := 0x00000100 ; RIDEV_INPUTSINK
+    
+    ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
+    SelectedDevice := handle
+    OnMessage(0x00FF, "InputMsg")
+    return
+	
+	;handle := DeviceList[s].hDevice
+	handle := 131145
+	rid := new _struct(WinStructs.RAWINPUTDEVICE)
+	rid.usUsagePage := 1
+	rid.usUsage := 4
+	rid.hwndTarget := WinExist("A") ; A_ScriptHwnd
+    rid.dwFlags := 0x00000100 ; RIDEV_INPUTSINK
+	
+	ret := HID.RegisterRawInputDevices(rid[], 1, sizeof(WinStructs.RAWINPUTDEVICE))
+	SelectedDevice := handle
+	OnMessage(0x00FF, "InputMsg")
+	return
+	
+	static DevSize := 8 + A_PtrSize
+	;RAWINPUTDEVICE := StaticSetCapacity(RAWINPUTDEVICE, DevSize)
+	VarSetCapacity(RAWINPUTDEVICE, DevSize)
+	MsgBox % DevSize
+	;NumPut(DevData[s].hid.usUsagePage, RAWINPUTDEVICE, 0, "UShort")
+	;NumPut(DevData[s].hid.usUsage, RAWINPUTDEVICE, 2, "UShort")
+	NumPut(1, RAWINPUTDEVICE, 0, "UShort")
+	NumPut(4, RAWINPUTDEVICE, 2, "UShort")
+	Flags := 0x00000100 ; RIDEV_INPUTSINK
+	NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
+	hwnd := WinExist("A")
+	NumPut(hwnd, RAWINPUTDEVICE, 8, "Uint")
+	r := HID.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
+	;SelectedDevice := DeviceList[s].hDevice
+	SelectedDevice := 131145
+	;MsgBox % "subscribing to`nDevice: " DeviceList[s].hDevice "`nPage: " DevData[s].hid.usUsagePage "`nUsage: " DevData[s].hid.usUsage
+	OnMessage(0x00FF, "InputMsg")
 	return
 }
 
@@ -403,16 +477,14 @@ InputMsg(wParam, lParam) {
 	
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 	static cbSizeHeader := 8 + (A_PtrSize * 2)
-	static pcbSize := 0
-	; ToDo: Dont think StructRAWINPUT size is right on x64
-	static StructRAWINPUT := StaticSetCapacity(StructRAWINPUT, (A_PtrSize * 4) + 24)
+	static StructRAWINPUT,init:= VarSetCapacity(StructRAWINPUT, 10240)
 	static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
 	QPX(true)
-
-	if (pcbSize = 0){
-		HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)
-	}
-	HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader)
+	
+	HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)
+	;VarSetCapacity(StructRAWINPUT, pcbSize)
+	if (!ret:=HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader))
+		MsgBox % HID.ErrMsg() "`n" pcbSize "`n" ret
 	
 	ObjRAWINPUT := {}
 	ObjRAWINPUT.header := {
@@ -432,7 +504,7 @@ InputMsg(wParam, lParam) {
 			bRawData: NumGet(StructRAWINPUT, b + 8, "UChar")
 		)}
 	}
-	
+
 	handle := ObjRAWINPUT.header.hDevice
 	if (handle = 0){
 		QPX(false)
@@ -443,8 +515,7 @@ InputMsg(wParam, lParam) {
 	if (handle != SelectedDevice){
 		; Message arrived for diff handle.
 		; This is to be expected, as most sticks are UsagePage/Usage 1/4.
-		ToolTip % "Ignoring " handle
-		OutputDebug, % "Ignoring WM_INPUT from handle " handle "(Selected Device = " SelectedDevice ")"
+		OutputDebug, % "Ignoring Message from " handle
 		QPX(false)
 		return
 	}
@@ -455,7 +526,7 @@ InputMsg(wParam, lParam) {
 		return
 	}
 
-	OutputDebug, % "Processing WM_INPUT from handle " handle "(Selected Device = " SelectedDevice ")"
+	OutputDebug, % "Processing message from handle " handle
 
 	;ToolTip % "L: " CapsArray[handle].InputReportByteLength
 	if (ObjRAWINPUT.header.dwType = HID.RIM_TYPEHID){
