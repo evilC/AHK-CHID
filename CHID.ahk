@@ -36,6 +36,13 @@ class JoystickTester extends CHID {
 		LV_Modifycol(7,50)
 		LV_Modifycol(8,50)
 		LV_Modifycol(9,50)
+		
+		Gui, Add, Edit, % "hwndhButtons w" this.GUI_WIDTH / 2 " h200"
+		this.hButtons := hButtons
+		
+		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
+		Gui, Add, Text, % "hwndhProcessTime w50 ys"
+		this.hProcessTime := hProcessTime
 		Gui, Show, y0, CHID Joystick Tester
 		fn := this.DeviceSelected.Bind(this)
 		
@@ -55,9 +62,17 @@ class JoystickTester extends CHID {
 		; Listviews fire g-labels on down event and up event of click, filter out up event
 		LV_GetText(handle, LV_GetNext())
 		if (A_GuiEvent = "i"){
-			this.RegisterDevice(this.DevicesByHandle[handle])
+			;this.RegisterDevice(this.DevicesByHandle[handle])
+			fn := this.DeviceChanged.Bind(this)
+			this.DevicesByHandle[handle].RegisterCallback(fn)
 		}
 		return 1
+	}
+	
+	; The selected device changed
+	DeviceChanged(device){
+		GuiControl, , % this.hButtons, % device.btnstring
+		GuiControl, , % this.hProcessTime, % device._ProcessTime
 	}
 }
 
@@ -100,12 +115,12 @@ class CHID {
 				; Only HID devices supported
 				continue
 			}
-			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this._RAWINPUTDEVICELIST[A_Index])
+			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this, this._RAWINPUTDEVICELIST[A_Index])
 			OutputDebug % "Processing Device " this._RAWINPUTDEVICELIST[A_Index].hDevice
 			
 		}
 	}
-	
+
 	; Registers a single device for messages
 	; Actually, it registers a UsagePage / Usage for a device, plus adds the device handle to a list so other devices on that UsagePage/Usage can be filtered out.
 	RegisterDevice(device){
@@ -189,6 +204,7 @@ class CHID {
 				break
 			}
 		}
+		device._ProcessTime := QPX(false)
 	}
 	
 	class _CDevice {
@@ -204,13 +220,17 @@ class CHID {
 		NumPOVs := 0			; The number of POV hats
 		HumanName := ""			; A Human-readable name (May not be unique)
 		Type := -1 				; Should be RIM_TYPEHID
+		
+		; private properties
+		_callback := 0			; Function to be called when this device changes
 
-		__New(RAWINPUTDEVICELIST){
+		__New(parent, RAWINPUTDEVICELIST){
 			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 			static DevSize := 32
 			static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 			
+			this._parent := parent
 			this.handle := RAWINPUTDEVICELIST.hDevice
 			this.type := RAWINPUTDEVICELIST.dwType
 			
@@ -431,6 +451,12 @@ class CHID {
 			this.NumPOVs := Hats
 		}
 		
+		RegisterCallback(func){
+			this._parent.RegisterDevice(this)
+			this._callback := func
+		}
+
+
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
@@ -460,7 +486,12 @@ class CHID {
 					btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
 				}
 			}
-			ToolTip % btnstring
+			
+			this.btnstring := btnstring
+			;ToolTip % btnstring
+			if (this._callback != 0){
+				(this._callback).(this)
+			}
 		}
 	}
 	
