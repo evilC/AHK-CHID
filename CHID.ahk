@@ -521,11 +521,21 @@ class CHID {
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
-					r := DLLWrappers.HidP_GetUsageValue(0, this.HIDP_VALUE_CAPS[A_Index].UsagePage, 0, this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, value, PreparsedData, bRawData, dwSizeHid)
+					DLLWrappers.HidP_GetUsageValue(0, this.HIDP_VALUE_CAPS[A_Index].UsagePage, 0, this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, value, PreparsedData, bRawData, dwSizeHid)
 					value := NumGet(value,0,"Uint")
 					axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
 
 				}
+				
+				/*
+				UsageValueByteLength := 1024
+				VarSetCapacity(UsageValue, UsageValueByteLength)
+				r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Usage, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+				if (r < 0){
+					MsgBox % A_ThisFunc " Error: " this._parent.HidP_ErrMsg(r)
+				}
+				*/
+				;ToolTip % "ret: " r
 			}
 			this.AxisDebug := AxisString
 		}
@@ -558,7 +568,27 @@ class CHID {
 		StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
 		return %ErrorString% 
 	}
-}
+	
+	HidP_ErrMsg(ErrNum){
+		static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
+		if (ErrNum = "") {
+			return "NO ERROR CODE"
+		} else if (ErrNum = HIDP_STATUS_BUFFER_TOO_SMALL){
+			return "HIDP_STATUS_BUFFER_TOO_SMALL"
+		} else if (ErrNum = HIDP_STATUS_INCOMPATIBLE_REPORT_ID){
+			return "HIDP_STATUS_INCOMPATIBLE_REPORT_ID"
+		} else if (ErrNum = HIDP_STATUS_USAGE_NOT_FOUND){
+			return "HIDP_STATUS_USAGE_NOT_FOUND"
+		} else if (ErrNum = HIDP_STATUS_INVALID_REPORT_LENGTH){
+			return "HIDP_STATUS_INVALID_REPORT_LENGTH"
+		} else if (ErrNum = HIDP_STATUS_INVALID_REPORT_TYPE){
+			return "HIDP_STATUS_INVALID_REPORT_TYPE"
+		} else if (ErrNum = HIDP_STATUS_INVALID_PREPARSED_DATA){
+			return "HIDP_STATUS_INVALID_PREPARSED_DATA"
+		} else {
+			return "UNKNOWN ERROR (" ErrMsg ")"
+		}
+	}}
 
 ; Just an easy way to let me copy across code for now
 Class DLLWrappers {
