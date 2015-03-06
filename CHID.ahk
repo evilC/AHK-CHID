@@ -37,7 +37,9 @@ class JoystickTester extends CHID {
 		LV_Modifycol(8,50)
 		LV_Modifycol(9,50)
 		
-		Gui, Add, Edit, % "hwndhButtons w" this.GUI_WIDTH / 2 " h200"
+		Gui, Add, Text, % "hwndhAxes w300 h200 xm y240"
+		this.hAxes := hAxes
+		Gui, Add, Text, % "hwndhButtons w300 h200 x331 y240"
 		this.hButtons := hButtons
 		
 		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
@@ -69,10 +71,15 @@ class JoystickTester extends CHID {
 		return 1
 	}
 	
-	; The selected device changed
+	; A subscribed device changed
 	DeviceChanged(device){
-		GuiControl, , % this.hButtons, % device.btnstring
-		GuiControl, , % this.hProcessTime, % device._ProcessTime
+		LV_GetText(handle, LV_GetNext())
+		if (device.handle = handle){
+			; Device is the one currently selected in the LV
+			GuiControl, , % this.hButtons, % device.btnstring
+			GuiControl, , % this.hAxes, % device.AxisDebug
+			GuiControl, , % this.hProcessTime, % device._ProcessTime
+		}
 	}
 }
 
@@ -205,6 +212,12 @@ class CHID {
 			}
 		}
 		device._ProcessTime := QPX(false)
+		
+		; Fire callback for device, if registered
+		if (device._callback != 0){
+			(device._callback).(device)
+		}
+
 	}
 	
 	class _CDevice {
@@ -223,6 +236,7 @@ class CHID {
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
+		static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 
 		__New(parent, RAWINPUTDEVICELIST){
 			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
@@ -486,12 +500,25 @@ class CHID {
 					btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
 				}
 			}
-			
 			this.btnstring := btnstring
-			;ToolTip % btnstring
-			if (this._callback != 0){
-				(this._callback).(this)
+
+			axisstring:= "Axes:`n`n"
+			; Decode Axis States
+			if (this.HIDP_CAPS.NumberInputValueCaps){
+				;static value := StaticSetCapacity(value, 4)
+				VarSetCapacity(value, A_PtrSize)
+				Loop % this.HIDP_CAPS.NumberInputValueCaps {
+					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
+						; Ignore things not on the page we subscribed to.
+						continue
+					}
+					r := DLLWrappers.HidP_GetUsageValue(0, this.HIDP_VALUE_CAPS[A_Index].UsagePage, 0, this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, value, PreparsedData, bRawData, dwSizeHid)
+					value := NumGet(value,0,"Uint")
+					axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
+
+				}
 			}
+			this.AxisDebug := AxisString
 		}
 	}
 	
