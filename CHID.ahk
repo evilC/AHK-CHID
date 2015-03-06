@@ -3,6 +3,9 @@
 A base set of methods for interfacing with HID API calls
 
 Source material
+RawInput functions: https://msdn.microsoft.com/en-us/library/windows/desktop/ff468896(v=vs.85).aspx
+HIDClass support routines: https://msdn.microsoft.com/en-us/library/windows/hardware/ff538865(v=vs.85).aspx
+
 http://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
 HID Usages: http://www.freebsddiary.org/APC/usb_hid_usages.php
 Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140a02c098732961c685e9c04994bf57b:bsnes/ruby/input/rawinput.cpp#Lundefined
@@ -10,7 +13,13 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 ToDo:
 * Remove superfluous ByRefs.
 * Remove DLL wrappers? AHK-H would negate need for wrappers...
-* Implement RIDI_DEVICENAME in GetRawInputDeviceInfo to get unique, persistent name
+* Implement unique, persistent name. HidD_GetHidGuid? RIDI_DEVICENAME in GetRawInputDeviceInfo? HidD_GetProductString?
+* Tidy up duplicate definitions for constants
+* Get all axis values in one DLL call using HidP_GetUsageValueArray
+* Get change in button states using HidP_UsageListDifference
+* Calculate calibrated values? HidP_GetScaledUsageValue?
+* Clean up debug / Button+Axis state class properties
+
 */
 #singleinstance force
 SetBatchLines -1
