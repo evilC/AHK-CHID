@@ -46,7 +46,7 @@ class JoystickTester extends CHID {
 			PID := device.RID_DEVICE_INFO.hid.dwProductID
 			uspg := device.RID_DEVICE_INFO.hid.usUsagePage
 			us := device.RID_DEVICE_INFO.hid.usUsage
-			LV_Add(, handle, device.HumanName, device.NumButtons, , ,VID, PID, uspg, us )
+			LV_Add(, handle, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, VID, PID, uspg, us )
 		}
 	}
 }
@@ -63,7 +63,6 @@ class CHID {
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 	
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
@@ -97,7 +96,8 @@ class CHID {
 	
 	class _CDevice {
 		RID_DEVICE_INFO := {}
-		
+		AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
+
 		__New(RAWINPUTDEVICELIST){
 			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
@@ -170,6 +170,7 @@ class CHID {
 			)}
 			
 			Axes := ""
+			AxisCount := 0
 			Hats := 0
 			btns := 0
 			
@@ -222,32 +223,104 @@ class CHID {
 						)}
 					}
 				}
-				
-				this.NumButtons := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
+				btns := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
+				if (btns = ""){
+					btns := 0
+				}
 			}
+			
+			this.NumButtons := btns
 
+			; Axes / Hats
+			if (this.HIDP_CAPS.NumberInputValueCaps) {
+				;ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
+				VarSetCapacity(ValueCaps, (72 * this.HIDP_CAPS.NumberInputValueCaps))
+				DLLWrappers.HidP_GetValueCaps(0, &ValueCaps, this.HIDP_CAPS.NumberInputValueCaps, PreparsedData)
+				
+				;this.HIDP_VALUE_CAPS := StructGetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
+				this.HIDP_VALUE_CAPS := []
+				Loop % this.HIDP_CAPS.NumberInputValueCaps {
+					b := (A_Index -1) * 72
+					this.HIDP_VALUE_CAPS[A_Index] := {
+					(Join,
+						UsagePage: NumGet(ValueCaps, b + 0, "UShort")
+						ReportID: NumGet(ValueCaps, b + 2, "UChar")
+						IsAlias: NumGet(ValueCaps, b + 3, "UChar")
+						BitField: NumGet(ValueCaps, b + 4, "UShort")
+						LinkCollection: NumGet(ValueCaps, b + 6, "UShort")
+						LinkUsage: NumGet(ValueCaps, b + 8, "UShort")
+						LinkUsagePage: NumGet(ValueCaps, b + 10, "UShort")
+						IsRange: NumGet(ValueCaps, b + 12, "UChar")
+						IsStringRange: NumGet(ValueCaps, b + 13, "UChar")
+						IsDesignatorRange: NumGet(ValueCaps, b + 14, "UChar")
+						IsAbsolute: NumGet(ValueCaps, b + 15, "UChar")
+						HasNull: NumGet(ValueCaps, b + 16, "UChar")
+						Reserved: NumGet(ValueCaps, b + 17, "UChar")
+						BitSize: NumGet(ValueCaps, b + 18, "UShort")
+						ReportCount: NumGet(ValueCaps, b + 20, "UShort")
+						Reserved2: NumGet(ValueCaps, b + 22, "UShort")
+						UnitsExp: NumGet(ValueCaps, b + 32, "Uint")
+						Units: NumGet(ValueCaps, b + 36, "Uint")
+						LogicalMin: NumGet(ValueCaps, b + 40, "int")
+						LogicalMax: NumGet(ValueCaps, b + 44, "int")
+						PhysicalMin: NumGet(ValueCaps, b + 48, "int")
+						PhysicalMax: NumGet(ValueCaps, b + 52, "int")
+					)}
+					; ToDo: Why is IsRange not 1?
+					;if (out[A_Index].IsRange)
+						this.HIDP_VALUE_CAPS[A_Index].Range := {
+						(Join,
+							UsageMin: NumGet(ValueCaps, b + 56, "UShort")
+							UsageMax: NumGet(ValueCaps, b + 58, "UShort")
+							StringMin: NumGet(ValueCaps, b + 60, "UShort")
+							StringMax: NumGet(ValueCaps, b + 62, "UShort")
+							DesignatorMin: NumGet(ValueCaps, b + 64, "UShort")
+							DesignatorMax: NumGet(ValueCaps, b + 66, "UShort")
+							DataIndexMin: NumGet(ValueCaps, b + 68, "UShort")
+							DataIndexMax: NumGet(ValueCaps, b + 70, "UShort")
+						)}
+					/*	
+					} else {
+						this.HIDP_VALUE_CAPS[A_Index].NotRange := {
+						(Join,
+							Usage: NumGet(ValueCaps, 56, "UShort")
+							Reserved1: NumGet(ValueCaps, 58, "UShort")
+							StringIndex: NumGet(ValueCaps, 60, "UShort")
+							Reserved2: NumGet(ValueCaps, 62, "UShort")
+							DesignatorIndex: NumGet(ValueCaps, 64, "UShort")
+							Reserved3: NumGet(ValueCaps, 66, "UShort")
+							DataIndex: NumGet(ValueCaps, 68, "UShort")
+							Reserved4: NumGet(ValueCaps, 70, "UShort")
+						)}
+					}
+					*/
+				}
+				
+				Loop % this.HIDP_CAPS.NumberInputValueCaps {
+					Type := (Range:=this.HIDP_VALUE_CAPS[A_Index].Range).UsageMin
+					if (Type = 0x39){
+						; Hat
+						Hats++
+					} else if (Type >= 0x30 && Type <= 0x38) {
+						; If one of the known 8 standard axes
+						Type -= 0x2F
+						if (Axes != ""){
+							Axes .= ","
+						}
+						Axes .= this.AxisNames[Type]
+						AxisCount++
+					}
+				}
+			}
+			this.NumAxes := AxisCount
+			this.AxisString := Axes
+			this.NumPOVs := Hats
 		}
 	}
 }
 
+; Just an easy way to let me copy across code for now
 Class DLLWrappers {
-	; Constants pulled from header files
-    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
-	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
-	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	
-	; Proprietatary Constants
-    static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
-	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-
-	__New(){
-		; ToDo: Accelerate DLL calls in here by loading libs etc.
-		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
-	}
-	
 	;----------------------------------------------------------------
 	; Function:     ErrMsg
 	;               Get the description of the operating system error
