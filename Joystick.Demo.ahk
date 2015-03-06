@@ -326,6 +326,7 @@ InputMsg(wParam, lParam) {
 	static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
 	QPX(true)
 	
+	OutputDebug % lParam
 	HID.GetRawInputData(lParam, HID.RID_INPUT, 0, pcbSize, cbSizeHeader)
 	;VarSetCapacity(StructRAWINPUT, pcbSize)
 	if (!ret:=HID.GetRawInputData(lParam, HID.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader))

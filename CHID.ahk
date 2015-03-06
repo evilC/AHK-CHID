@@ -7,13 +7,67 @@ HID Usages: http://www.freebsddiary.org/APC/usb_hid_usages.php
 Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140a02c098732961c685e9c04994bf57b:bsnes/ruby/input/rawinput.cpp#Lundefined
 
 ToDo:
-* Remove all ByRefs.
-Calling code should correctly use pointers where appropriate.
-Whilst slightly more complex for the user, it will remove all ambiguity as to when and when not to use pointers.
-It will also mean better compatibility with _Struct etc.
+* Remove superfluous ByRefs.
 
 */
-Class CHID {
+#singleinstance force
+SetBatchLines -1
+OutputDebug, DBGVIEWCLEAR
+
+jt := new JoystickTester()
+return
+
+class JoystickTester extends CHID {
+	__New(){
+		base.__New()
+		Loop % this.DeviceListHandler.DeviceList.MaxIndex() {
+			MsgBox % this.DeviceListHandler.DeviceList[A_Index].hDevice
+		}
+	}
+}
+
+Esc::
+GuiClose:
+	ExitApp
+
+class CHID {
+    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
+	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
+	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	
+	__New(){
+		this.DeviceListHandler := new this._CDeviceListHandler()
+	}
+	
+	class _CDeviceListHandler {
+		DeviceList := []
+
+		__New(){
+			DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
+			DLLWrappers.GetRawInputDeviceList(0, NumDevices, DeviceSize)
+			this.NumDevices := NumDevices
+			this.DeviceList := []
+			VarSetCapacity(Data, DeviceSize * NumDevices)
+			DLLWrappers.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
+			Loop % NumDevices {
+				b := (DeviceSize * (A_Index - 1))
+				this.DeviceList[A_Index] := {
+				(Join,
+					_size: DeviceSize
+					hDevice: NumGet(data, b, "Uint")
+					dwType: NumGet(data, b + A_PtrSize, "Uint")
+				)}
+				OutputDebug % "Processing Device " this.DeviceList[A_Index].hDevice
+			}
+
+		}
+	}
+}
+
+Class DLLWrappers {
 	; Constants pulled from header files
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
