@@ -1,19 +1,3 @@
-/*
-ToDo: 
-Investigate why vJoy stick does not get messages under these circumstances:
-1) Speedlink "Generic USB Joystick" is plugged in at startup.
-2) Code is executing under x64
-In this case, no message for handle of vJoy stick gets sent.
-If you unplug the "bad" stick + start up, then plug in bad stick, you can see the messages for the bad stick get ignored.
-
-Intersting facts:
-1) The bad stick is always the first in the list.
-2) The handle for the stick is abnormally large.
-3) The handle for this stick sometimes changes, whereas the others do not.
-4) The bad stick is a generic 4-axis psx-style gamepad with an "analog" button. There appear to be two Z axes, though they always read the same. 
-*/
-#include <CHID>
-
 #singleinstance force
 SetBatchLines -1
 
@@ -449,3 +433,133 @@ StaticSetCapacity(ByRef var, size){
 Esc::
 GuiClose:
 	ExitApp
+
+Class CHID {
+	; Constants pulled from header files
+    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
+	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710
+	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	
+	; Proprietatary Constants
+    static RIM_TYPE := {0: "Mouse", 1: "Keyboard", 2: "Other"}
+	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+
+	__New(){
+		; ToDo: Accelerate DLL calls in here by loading libs etc.
+		;DLLCall("LoadLibrary", "Str", CheckLocations[A_Index])
+	}
+	
+	;----------------------------------------------------------------
+	; Function:     ErrMsg
+	;               Get the description of the operating system error
+	;               
+	; Parameters:
+	;               ErrNum  - Error number (default = A_LastError)
+	;
+	; Returns:
+	;               String
+	;
+	ErrMsg(ErrNum=""){ 
+		if ErrNum=
+			ErrNum := A_LastError
+
+		VarSetCapacity(ErrorString, 1024) ;String to hold the error-message.    
+		DllCall("FormatMessage" 
+			 , "UINT", 0x00001000     ;FORMAT_MESSAGE_FROM_SYSTEM: The function should search the system message-table resource(s) for the requested message. 
+			 , "UINT", 0              ;A handle to the module that contains the message table to search.
+			 , "UINT", ErrNum 
+			 , "UINT", 0              ;Language-ID is automatically retreived 
+			 , "Str",  ErrorString 
+			 , "UINT", 1024           ;Buffer-Length 
+			 , "str",  "")            ;An array of values that are used as insert values in the formatted message. (not used) 
+		
+		StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
+		return %ErrorString% 
+	}
+
+	RegisterRawInputDevices(ByRef pRawInputDevices, uiNumDevices, cbSize := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
+		Uses RAWINPUTDEVICE structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645565(v=vs.85).aspx
+		*/
+		
+		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )
+	}
+	
+	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
+		*/
+		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
+	}
+	
+	GetRawInputDeviceInfo(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
+		Uses RID_DEVICE_INFO structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645581%28v=vs.85%29.aspx
+		*/
+		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
+		*/
+	}
+	
+	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0, cbSizeHeader := 0){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
+		Uses RAWINPUT structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645562(v=vs.85).aspx
+		*/
+		return DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize, "Uint", cbSizeHeader)
+	}
+	
+	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
+		returns HIDP_STATUS_ value, eg HIDP_STATUS_SUCCESS
+		Uses HIDP_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
+		*/
+		;Capabilities := new _Struct("WinStructs.HIDP_CAPS")
+		return DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities)
+	}
+	
+	HidP_GetButtonCaps(ReportType, ByRef ButtonCaps, ByRef ButtonCapsLength, ByRef PreparsedData){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539707(v=vs.85).aspx
+		Uses HIDP_BUTTON_CAPS structure: https://msdn.microsoft.com/en-gb/library/windows/hardware/ff539693(v=vs.85).aspx
+		*/
+		return DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps, "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
+	}
+	
+	HidP_GetValueCaps(ReportType, ByRef ValueCaps, ByRef ValueCapsLength, ByRef PreparsedData){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539754%28v=vs.85%29.aspx
+		Uses HIDP_VALUE_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539832(v=vs.85).aspx
+		*/
+		return DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps, "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
+	}
+	
+	HidP_GetUsages(ReportType, UsagePage, LinkCollection, ByRef UsageList, ByRef UsageLength, ByRef PreparsedData, ByRef Report, ReportLength){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539742%28v=vs.85%29.aspx
+		*/
+		
+		return DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
+	}
+	
+	HidP_GetUsageValue(ReportType, UsagePage, LinkCollection, Usage, ByRef UsageValue, ByRef PreparsedData, ByRef Report, ReportLength){
+		/*
+		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539748%28v=vs.85%29.aspx
+		*/
+		
+		return DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
+	}
+}
+
+QPX( N=0 ) { ; Wrapper for QueryPerformanceCounter()by SKAN | CD: 06/Dec/2009
+	Static F,A,Q,P,X ; www.autohotkey.com/forum/viewtopic.php?t=52083 | LM: 10/Dec/2009
+	If	( N && !P )
+		Return	DllCall("QueryPerformanceFrequency",Int64P,F) + (X:=A:=0) + DllCall("QueryPerformanceCounter",Int64P,P)
+	DllCall("QueryPerformanceCounter",Int64P,Q), A:=A+Q-P, P:=Q, X:=X+1
+	Return	( N && X=N ) ? (X:=X-1)<<64 : ( N=0 && (R:=A/X/F) ) ? ( R + (A:=P:=X:=0) ) : 1
+}
