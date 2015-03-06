@@ -54,15 +54,18 @@ BuildDeviceList(){
 	global PreparsedData, ppSize, CapsArray, ButtonCapsArray, ValueCapsArray
 
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+	static DevSize := 32
 
 	HID := new CHID()
 	
 	; Build Device List ===========================================================
 	DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
-	HID.GetRawInputDeviceList(0, NumDevices, DeviceSize)
+	VarSetCapacity(puiNumDevices, A_PtrSize)
+	HID.GetRawInputDeviceList(0, &puiNumDevices, DeviceSize)
+	NumDevices := NumGet(puiNumDevices, 0, "Uint")
 	DeviceList := []
 	VarSetCapacity(Data, DeviceSize * NumDevices)
-	HID.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
+	HID.GetRawInputDeviceList(&Data, &puiNumDevices, DeviceSize)
 	Loop % NumDevices {
 		b := (DeviceSize * (A_Index - 1))
 		DeviceList[A_Index] := {
@@ -84,14 +87,13 @@ BuildDeviceList(){
 	Loop % NumDevices {
 		; Get device Handle
 		if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
-			;continue
+			continue
 		}
 		handle := DeviceList[A_Index].hDevice
 		
 		; Get Device Info
-		VarSetCapacity(RID_DEVICE_INFO, 32)
-		NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-		static DevSize := 32
+		VarSetCapacity(RID_DEVICE_INFO, DevSize)
+		NumPut(DevSize, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
 		HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
 		
 		Data := {}
@@ -110,11 +112,9 @@ BuildDeviceList(){
 		;Data := DevInfo.Data
 		DevData[A_Index] := Data
 
-		OutputDebug, % "Getting Device Info for " DevData[A_Index].hid.dwVendorID
-		
 		if (DevData[A_Index].dwType != HID.RIM_TYPEHID){
 			; ToDo: Why can a DeviceList object be type HID, but the DeviceInfo type be something else?
-			;continue
+			continue
 		}
 		
 		

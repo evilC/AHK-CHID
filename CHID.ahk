@@ -59,7 +59,7 @@ Class CHID {
 		return %ErrorString% 
 	}
 
-	RegisterRawInputDevices(ByRef pRawInputDevices, uiNumDevices, cbSize := 0){
+	RegisterRawInputDevices(pRawInputDevices, uiNumDevices, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
 		
@@ -75,7 +75,9 @@ Class CHID {
 		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )
 	}
 	
-	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
+	;GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
+	;GetRawInputDeviceList(pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
+	GetRawInputDeviceList(pRawInputDeviceList := 0, puiNumDevices := 0, cbSize := 0){
 		/*
 		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
 
@@ -91,7 +93,8 @@ Class CHID {
 		
 		Uses RAWINPUTDEVICELIST structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
 		*/
-		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
+		;return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
+		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "Ptr", puiNumDevices, "UInt", cbSize )
 	}
 	
 	GetRawInputDeviceInfo(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
