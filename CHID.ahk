@@ -434,8 +434,6 @@ class CHID {
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-			VarSetCapacity(StructRAWINPUT, 10240)
-			static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
 	
 			DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, 0, ppSize)
 			VarSetCapacity(PreparsedData, ppSize)
