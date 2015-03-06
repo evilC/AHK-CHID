@@ -19,30 +19,34 @@ jt := new JoystickTester()
 return
 
 class JoystickTester extends CHID {
-	GUI_WIDTH := 681
+	GUI_WIDTH := 651
 	
 	__New(){
 		base.__New()
-		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h200 AltSubmit +Grid",#|Handle|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
-		LV_Modifycol(1,20)
-		LV_Modifycol(2,80)
-		LV_Modifycol(3,130)
-		LV_Modifycol(4,40)
-		LV_Modifycol(5,140)
+		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
+		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 AltSubmit +Grid",Handle|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+		LV_Modifycol(1,80)
+		LV_Modifycol(2,130)
+		LV_Modifycol(3,40)
+		LV_Modifycol(4,140)
+		LV_Modifycol(5,50)
 		LV_Modifycol(6,50)
 		LV_Modifycol(7,50)
 		LV_Modifycol(8,50)
 		LV_Modifycol(9,50)
-		LV_Modifycol(10,50)
-		Gui, Show, y0
+		Gui, Show, y0, CHID Joystick Tester
 		
 		this.hLV := hLV
 		for handle, device in this.DevicesByHandle {
+			if (!device.NumButtons && !device.NumAxes){
+				; Ignore devices with no buttons or axes
+				continue
+			}
 			VID := device.RID_DEVICE_INFO.hid.dwVendorID
 			PID := device.RID_DEVICE_INFO.hid.dwProductID
 			uspg := device.RID_DEVICE_INFO.hid.usUsagePage
 			us := device.RID_DEVICE_INFO.hid.usUsage
-			LV_Add(,A_Index, handle, device.HumanName, , , ,VID, PID, uspg, us )
+			LV_Add(, handle, device.HumanName, device.NumButtons, , ,VID, PID, uspg, us )
 		}
 	}
 }
@@ -138,31 +142,92 @@ class CHID {
 				}
 			}
 			this.HumanName := HumanName
+			
+			; Decode capabilities
+			DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, 0, ppSize)
+			VarSetCapacity(PreparsedData, ppSize)
+			ret := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+			
+			VarSetCapacity(Cap, 64)
+			DLLWrappers.HidP_GetCaps(PreparsedData, &Cap)
+
+			this.HIDP_CAPS := {
+			(Join,
+				Usage: NumGet(Cap, 0, "UShort")
+				UsagePage: NumGet(Cap, 2, "UShort")
+				InputReportByteLength: NumGet(Cap, 4, "UShort")
+				OutputReportByteLength: NumGet(Cap, 6, "UShort")
+				FeatureReportByteLength: NumGet(Cap, 8, "UShort")
+				Reserved: NumGet(Cap, 10, "UShort")
+				NumberLinkCollectionNodes: NumGet(Cap, 44, "UShort")
+				NumberInputButtonCaps: NumGet(Cap, 46, "UShort")
+				NumberInputValueCaps: NumGet(Cap, 48, "UShort")
+				NumberInputDataIndices: NumGet(Cap, 50, "UShort")
+				NumberOutputButtonCaps: NumGet(Cap, 52, "UShort")
+				NumberOutputDataIndices: NumGet(Cap, 54, "UShort")
+				NumberFeatureButtonCaps: NumGet(Cap, 56, "UShort")
+				NumberFeatureDataIndices: NumGet(Cap, 58, "UShort")
+			)}
+			
+			Axes := ""
+			Hats := 0
+			btns := 0
+			
+			if (this.HIDP_CAPS.NumberInputButtonCaps) {
+				
+				VarSetCapacity(ButtonCaps, (72 * this.HIDP_CAPS.NumberInputButtonCaps))
+				DLLWrappers.HidP_GetButtonCaps(0, &ButtonCaps, this.HIDP_CAPS.NumberInputButtonCaps, PreparsedData)
+				this.HIDP_BUTTON_CAPS := []
+				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
+					b := (A_Index -1) * 72
+					this.HIDP_BUTTON_CAPS[A_Index] := {
+					(Join,
+						UsagePage: NumGet(ButtonCaps, b + 0, "UShort")
+						ReportID: NumGet(ButtonCaps, b + 2, "UChar")
+						IsAlias: NumGet(ButtonCaps, b + 3, "UChar")
+						BitField: NumGet(ButtonCaps, b + 4, "UShort")
+						LinkCollection: NumGet(ButtonCaps, b + 6, "UShort")
+						LinkUsage: NumGet(ButtonCaps, b + 8, "UShort")
+						LinkUsagePage: NumGet(ButtonCaps, b + 10, "UShort")
+						IsRange: NumGet(ButtonCaps, b + 12, "UChar")
+						IsStringRange: NumGet(ButtonCaps, b + 13, "UChar")
+						IsDesignatorRange: NumGet(ButtonCaps, b + 14, "UChar")
+						IsAbsolute: NumGet(ButtonCaps, b + 15, "UChar")
+						Reserved: NumGet(ButtonCaps, b + 16, "Uint")
+					)}
+					if (this.HIDP_BUTTON_CAPS[A_Index].IsRange){
+						this.HIDP_BUTTON_CAPS[A_Index].Range := {
+						(Join,
+							UsageMin: NumGet(ButtonCaps, b + 56, "UShort")
+							UsageMax: NumGet(ButtonCaps, b + 58, "UShort")
+							StringMin: NumGet(ButtonCaps, b + 60, "UShort")
+							StringMax: NumGet(ButtonCaps, b + 62, "UShort")
+							DesignatorMin: NumGet(ButtonCaps, b + 64, "UShort")
+							DesignatorMax: NumGet(ButtonCaps, b + 66, "UShort")
+							DataIndexMin: NumGet(ButtonCaps, b + 68, "UShort")
+							DataIndexMax: NumGet(ButtonCaps, b + 70, "UShort")
+						)}
+						
+					} else {
+						this.HIDP_BUTTON_CAPS[A_Index].NotRange := {
+						(Join,
+							Usage: NumGet(ButtonCaps, 56, "UShort")
+							Reserved1: NumGet(ButtonCaps, 58, "UShort")
+							StringIndex: NumGet(ButtonCaps, 60, "UShort")
+							Reserved2: NumGet(ButtonCaps, 62, "UShort")
+							DesignatorIndex: NumGet(ButtonCaps, 64, "UShort")
+							Reserved3: NumGet(ButtonCaps, 66, "UShort")
+							DataIndex: NumGet(ButtonCaps, 68, "UShort")
+							Reserved4: NumGet(ButtonCaps, 70, "UShort")
+						)}
+					}
+				}
+				
+				this.NumButtons := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
+			}
+
 		}
 	}
-}
-
-
-;By Laszlo, adapted by TheGood
-;http://www.autohotkey.com/forum/viewtopic.php?p=377086#377086
-Bin2Hex(addr,len) {
-    Static fun, ptr 
-    If (fun = "") {
-        If A_IsUnicode
-            If (A_PtrSize = 8)
-                h=4533c94c8bd14585c07e63458bd86690440fb60248ffc2418bc9410fb6c0c0e8043c090fb6c00f97c14180e00f66f7d96683e1076603c8410fb6c06683c1304180f8096641890a418bc90f97c166f7d94983c2046683e1076603c86683c13049ffcb6641894afe75a76645890ac366448909c3
-            Else h=558B6C241085ED7E5F568B74240C578B7C24148A078AC8C0E90447BA090000003AD11BD2F7DA66F7DA0FB6C96683E2076603D16683C230668916240FB2093AD01BC9F7D966F7D96683E1070FB6D06603CA6683C13066894E0283C6044D75B433C05F6689065E5DC38B54240833C966890A5DC3
-        Else h=558B6C241085ED7E45568B74240C578B7C24148A078AC8C0E9044780F9090F97C2F6DA80E20702D1240F80C2303C090F97C1F6D980E10702C880C1308816884E0183C6024D75CC5FC606005E5DC38B542408C602005DC3
-        VarSetCapacity(fun, StrLen(h) // 2)
-        Loop % StrLen(h) // 2
-            NumPut("0x" . SubStr(h, 2 * A_Index - 1, 2), fun, A_Index - 1, "Char")
-        ptr := A_PtrSize ? "Ptr" : "UInt"
-        DllCall("VirtualProtect", ptr, &fun, ptr, VarSetCapacity(fun), "UInt", 0x40, "UInt*", 0)
-    }
-    VarSetCapacity(hex, A_IsUnicode ? 4 * len + 2 : 2 * len + 1)
-    DllCall(&fun, ptr, &hex, ptr, addr, "UInt", len, "CDecl")
-    VarSetCapacity(hex, -1) ; update StrLen
-    Return hex
 }
 
 Class DLLWrappers {
