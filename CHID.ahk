@@ -42,11 +42,7 @@ class JoystickTester extends CHID {
 				; Ignore devices with no buttons or axes
 				continue
 			}
-			VID := device.RID_DEVICE_INFO.hid.dwVendorID
-			PID := device.RID_DEVICE_INFO.hid.dwProductID
-			uspg := device.RID_DEVICE_INFO.hid.usUsagePage
-			us := device.RID_DEVICE_INFO.hid.usUsage
-			LV_Add(, handle, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, VID, PID, uspg, us )
+			LV_Add(, handle, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
 		}
 	}
 }
@@ -95,13 +91,24 @@ class CHID {
 	}
 	
 	class _CDevice {
-		RID_DEVICE_INFO := {}
-		AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
+		; Exposed properties
+		RID_DEVICE_INFO := {}	; An object containing the data from the RIDI_DEVICEINFO GetRawInputDeviceInfo call
+		VID := 0				; VID of the device, in the format it would appear in the registry
+		PID := 0				; PID of the device
+		UsagePage := 0			; Usage Page of the device
+		Usage := 0				; Usage of the device
+		NumButtons := 0			; The number of Buttons
+		NumAxes := 0			; The number of axes
+		AxisString := ""		; A human-readable comma-separated list of axes
+		NumPOVs := 0			; The number of POV hats
+		HumanName := ""			; A Human-readable name (May not be unique)
+		Type := -1 				; Should be RIM_TYPEHID
 
 		__New(RAWINPUTDEVICELIST){
 			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 			static DevSize := 32
+			static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 			
 			this.handle := RAWINPUTDEVICELIST.hDevice
 			this.type := RAWINPUTDEVICELIST.dwType
@@ -131,6 +138,12 @@ class CHID {
 			PID := Format("{:04x}",Data.hid.dwProductID)
 			StringUpper,VID, VID
 			StringUpper,PID, PID
+			
+			this.VID := VID
+			this.PID := PID
+			this.UsagePage := Data.Hid.usUsagePage
+			this.Usage := Data.Hid.usUsage
+			
 			if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
 				; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
 				HumanName := "XBOX 360 Controller"
@@ -307,7 +320,7 @@ class CHID {
 						if (Axes != ""){
 							Axes .= ","
 						}
-						Axes .= this.AxisNames[Type]
+						Axes .= AxisNames[Type]
 						AxisCount++
 					}
 				}
