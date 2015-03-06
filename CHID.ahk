@@ -37,14 +37,12 @@ class JoystickTester extends CHID {
 		Gui, Show, y0
 		
 		this.hLV := hLV
-		Loop % this.NumDevices {
-			handle := this.DeviceIndexToHandle[A_Index]
-			dev := this.DevicesByHandle[handle]
-			;MsgBox % dev.Type
-			VID := dev.RID_DEVICE_INFO.hid.dwVendorID
-			PID := dev.RID_DEVICE_INFO.hid.dwProductID
-			LV_Add(,A_Index, handle, , , , ,VID, PID )
-			;MsgBox % this.DeviceListHandler.DeviceList[A_Index].hDevice
+		for handle, device in this.DevicesByHandle {
+			VID := device.RID_DEVICE_INFO.hid.dwVendorID
+			PID := device.RID_DEVICE_INFO.hid.dwProductID
+			uspg := device.RID_DEVICE_INFO.hid.usUsagePage
+			us := device.RID_DEVICE_INFO.hid.usUsage
+			LV_Add(,A_Index, handle, device.HumanName, , , ,VID, PID, uspg, us )
 		}
 	}
 }
@@ -54,6 +52,7 @@ GuiClose:
 	ExitApp
 
 class CHID {
+	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
@@ -64,7 +63,6 @@ class CHID {
 	
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
-	DeviceIndexToHandle := []			; Lookup from Device # (ie 1-x) to handle - not internally used.
 	DevicesByHandle := {}				; Array of _CDevice objects, indexed by handle
 	
 	__New(){
@@ -73,7 +71,6 @@ class CHID {
 		this.NumDevices := NumDevices
 		this._RAWINPUTDEVICELIST := {}
 		this.DevicesByHandle := {}
-		this.DeviceIndexToHandle := []
 		VarSetCapacity(Data, DeviceSize * NumDevices)
 		DLLWrappers.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
 		Loop % NumDevices {
@@ -84,8 +81,11 @@ class CHID {
 				hDevice: NumGet(data, b, "Uint")
 				dwType: NumGet(data, b + A_PtrSize, "Uint")
 			)}
+			if (this._RAWINPUTDEVICELIST[A_Index].dwType != this.RIM_TYPEHID){
+				; Only HID devices supported
+				continue
+			}
 			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this._RAWINPUTDEVICELIST[A_Index])
-			this.DeviceIndexToHandle[A_Index] := this._RAWINPUTDEVICELIST[A_Index].hDevice
 			OutputDebug % "Processing Device " this._RAWINPUTDEVICELIST[A_Index].hDevice
 			
 		}
@@ -102,46 +102,12 @@ class CHID {
 			this.handle := RAWINPUTDEVICELIST.hDevice
 			this.type := RAWINPUTDEVICELIST.dwType
 			
-			if (this.Type != RIM_TYPEHID){
-				; Only HID devices supported
-				return
-			}
-			
 			VarSetCapacity(RID_DEVICE_INFO, 32)
 			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
 			r := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
 			if (!r){
 				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call"
 			}
-			Data := {}
-			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
-			Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
-			if (Data.dwType = RIM_TYPEHID){
-				Data.hid := {
-				(Join,
-					dwVendorId: Format("{:04x}", NumGet(RID_DEVICE_INFO, 8, "Uint"))
-					dwProductId: Format("{:04x}", NumGet(RID_DEVICE_INFO, 12, "Uint"))
-					dwVersionNumber: NumGet(RID_DEVICE_INFO, 16, "Uint")
-					usUsagePage: NumGet(RID_DEVICE_INFO, 20, "UShort")
-					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
-				)}
-			}
-			this.RID_DEVICE_INFO := Data
-
-			; GetRawInputDeviceInfo
-			;return
-			/*
-			if (DeviceList[A_Index].dwType != HID.RIM_TYPEHID){
-				;continue
-			}
-			handle := DeviceList[A_Index].hDevice
-			
-			; Get Device Info
-			VarSetCapacity(RID_DEVICE_INFO, 32)
-			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-			static DevSize := 32
-			HID.GetRawInputDeviceInfo(handle, HID.RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
-			
 			Data := {}
 			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
 			Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
@@ -155,7 +121,23 @@ class CHID {
 					usUsage: NumGet(RID_DEVICE_INFO, 22, "UShort")
 				)}
 			}
-			*/
+			this.RID_DEVICE_INFO := Data
+			
+			VID := Format("{:04x}", Data.hid.dwVendorID)
+			PID := Format("{:04x}",Data.hid.dwProductID)
+			StringUpper,VID, VID
+			StringUpper,PID, PID
+			if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
+				; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
+				HumanName := "XBOX 360 Controller"
+			} else {
+				key := "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_" VID "&PID_" PID
+				RegRead, HumanName, HKLM, % key, OEMName
+				if (HumanName = ""){
+					HumanName := "(Unknown Device)"
+				}
+			}
+			this.HumanName := HumanName
 		}
 	}
 }
