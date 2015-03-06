@@ -51,11 +51,13 @@ class JoystickTester extends CHID {
 	}
 	
 	DeviceSelected(){
+		static LastSelected := -1
 		; Listviews fire g-labels on down event and up event of click, filter out up event
+		LV_GetText(handle, LV_GetNext())
 		if (A_GuiEvent = "i"){
-			LV_GetText(handle, LV_GetNext())
-			ToolTip % handle
+			this.RegisterDevice(this.DevicesByHandle[handle])
 		}
+		return 1
 	}
 }
 
@@ -75,6 +77,8 @@ class CHID {
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
 	DevicesByHandle := {}				; Array of _CDevice objects, indexed by handle
+	RegisteredDevices := []				; Handles of devices registered for Messages
+	RegisteredUsages := []				; Indexed array of usagepages and usages that are registered
 	
 	__New(){
 		DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
@@ -100,6 +104,44 @@ class CHID {
 			OutputDebug % "Processing Device " this._RAWINPUTDEVICELIST[A_Index].hDevice
 			
 		}
+	}
+	
+	; Registers a single device for messages
+	; Actually, it registers a UsagePage / Usage for a device, plus adds the device handle to a list so other devices on that UsagePage/Usage can be filtered out.
+	RegisterDevice(device){
+		static DevSize := 8 + A_PtrSize
+		if (device.handle && !ObjHasKey(this.RegisteredDevices, device.handle)){
+			found := 0
+			Loop % this.RegisteredUsages.MaxIndex() {
+				if (this.RegisteredUsages[A_Index].UsagePage = device.UsagePage && this.RegisteredUsages[A_Index].Usage = device.Usage){
+					found := 1
+					break
+				}
+			}
+			
+			this.RegisteredDevices.Insert(device.handle)
+			
+			if (found){
+				; Usage Page and Usage already registered, do not need to register again.
+				return
+			}
+			VarSetCapacity(RAWINPUTDEVICE, DevSize)
+			NumPut(device.UsagePage, RAWINPUTDEVICE, 0, "UShort")
+			NumPut(device.Usage, RAWINPUTDEVICE, 2, "UShort")
+			Flags := 0x00000100 ; RIDEV_INPUTSINK
+			NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
+			NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
+			r := DLLWrappers.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
+			this.RegisteredUsages.Insert({UsagePage: device.UsagePage, Usage: device.Usage})
+			fn := this._MessageHandler.Bind(this)
+			OnMessage(0x00FF, fn)
+		}
+		return
+	}
+	
+	_MessageHandler(wParam, lParam){
+		; Check this.RegisteredDevices to see if this specific handle was registered
+		;SoundBeep
 	}
 	
 	class _CDevice {
