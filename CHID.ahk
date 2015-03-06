@@ -1,3 +1,4 @@
+; REQUIRES FUCNTION BINDING AHK TEST BUILD >= v1.1.19.03-37+gd7b054a from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
 /*
 A base set of methods for interfacing with HID API calls
 
@@ -24,7 +25,8 @@ class JoystickTester extends CHID {
 	__New(){
 		base.__New()
 		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
-		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 AltSubmit +Grid",Handle|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+		this.hLV := hLV
 		LV_Modifycol(1,80)
 		LV_Modifycol(2,130)
 		LV_Modifycol(3,40)
@@ -35,14 +37,24 @@ class JoystickTester extends CHID {
 		LV_Modifycol(8,50)
 		LV_Modifycol(9,50)
 		Gui, Show, y0, CHID Joystick Tester
+		fn := this.DeviceSelected.Bind(this)
 		
-		this.hLV := hLV
+		GuiControl +g, % this.hLV, % fn
+		
 		for handle, device in this.DevicesByHandle {
 			if (!device.NumButtons && !device.NumAxes){
 				; Ignore devices with no buttons or axes
 				continue
 			}
 			LV_Add(, handle, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
+		}
+	}
+	
+	DeviceSelected(){
+		; Listviews fire g-labels on down event and up event of click, filter out up event
+		if (A_GuiEvent = "i"){
+			LV_GetText(handle, LV_GetNext())
+			ToolTip % handle
 		}
 	}
 }
