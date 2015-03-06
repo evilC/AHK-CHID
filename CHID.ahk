@@ -185,61 +185,7 @@ class CHID {
 		Loop % this.RegisteredDevices.MaxIndex() {
 			if (this.RegisteredDevices[A_Index] = handle){
 				; Tell the device to get preparsed data and update
-				;this.DevicesByHandle[handle].GetPreparsedData(ObjRAWINPUT)
-				; ToDo: ppSize should be cached on CapsArray or something.
-				DLLWrappers.GetRawInputDeviceInfo(handle, this.RIDI_PREPARSEDDATA, 0, ppSize)
-				VarSetCapacity(PreparsedData, ppSize)
-				ret := DLLWrappers.GetRawInputDeviceInfo(handle, this.RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
-				btnstring := "Pressed Buttons:`n`n"
-				if (device.HIDP_CAPS.NumberInputButtonCaps) {
-					; ToDo: Loop through device.HIDP_BUTTON_CAPS[x] - Caps.NumberInputButtonCaps might not be 1
-					
-					btns := (Range:=device.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
-					UsageLength := btns
-					
-					;static UsageList := StaticSetCapacity(UsageList, 512)
-					static UsageList := VarSetCapacity(UsageList, 512)
-					;ret := DLLWrappers.HidP_GetUsages(0, device.HIDP_BUTTON_CAPS.UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
-					;ret := DLLWrappers.HidP_GetUsages(0, 0, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
-					; ToDo: How Come device.HIDP_BUTTON_CAPS.UsagePage is "", but it still works?
-					; UsagePage of 0 (not usagepage of device) works, but 1 (usage page for all sticks) does not. wtf ?!
-					ret := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", 0, "ushort", 0, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", &StructRAWINPUT + bRawDataOffset, "Uint", ObjRAWINPUT.hid.dwSizeHid)
-					;ToolTip % "ret: " ret "`nUsagePage: " device.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
-					Loop % UsageLength {
-						if (A_Index > 1){
-							btnstring .= ", "
-						}
-						; ToDo: This should be an array of USHORTs? Why do we have to use a size of 4 per button?
-						;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
-						btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
-					}
-					ToolTip % btnstring
-				}
-				
-				/*
-				axisstring:= "Axes:`n`n"
-				; Decode Axis States
-				if (device.HIDP_CAPS.NumberInputValueCaps){
-					;static value := StaticSetCapacity(value, 4)
-					;static value := StaticSetCapacity(value, A_PtrSize)
-					VarSetCapacity(value, A_PtrSize)
-					Loop % device.HIDP_CAPS.NumberInputValueCaps {
-						if (ValueCapsArray[handle][A_Index].UsagePage != 1){
-							; Ignore things not on the page we subscribed to.
-							continue
-						}
-						r := HID.HidP_GetUsageValue(0, ValueCapsArray[handle][A_Index].UsagePage, 0, ValueCapsArray[handle][A_Index].Range.UsageMin, value, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
-						;value := NumGet(value,0,"Short")
-						value := NumGet(value,0,"Uint")
-						axisstring .= HID.AxisHexToName[ValueCapsArray[handle][A_Index].Range.UsageMin] " axis: " value "`n"
-					}
-				}
-				*/
-				Ti := QPX(false)
-				GuiControl,,% hButtons, % btnstring
-				GuiControl,,% hAxes, % axisstring
-				GuiControl,,% hProcessTime, % Ti
-
+				this.DevicesByHandle[handle].GetPreparsedData(&StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
 				break
 			}
 		}
@@ -485,9 +431,8 @@ class CHID {
 			this.NumPOVs := Hats
 		}
 		
-		/*
 		; Called when this device received a WM_INPUT message
-		GetPreparsedData(ObjRAWINPUT){
+		GetPreparsedData(bRawData, dwSizeHid){
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 			VarSetCapacity(StructRAWINPUT, 10240)
 			static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
@@ -503,10 +448,11 @@ class CHID {
 				UsageLength := btns
 				
 				VarSetCapacity(UsageList, 512)
-				;MsgBox % this.HIDP_BUTTON_CAPS[1].UsagePage
-				;ret := DLLWrappers.HidP_GetUsages(0, this.HIDP_BUTTON_CAPS.UsagePage, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
-				ret := DLLWrappers.HidP_GetUsages(0, 1, 0, &UsageList, UsageLength, PreparsedData, &StructRAWINPUT + bRawDataOffset, ObjRAWINPUT.hid.dwSizeHid)
-				ToolTip % "ret: " ret "`nUsagePage: " this.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
+				
+				; ToDo: Why does UsagePage 0 only work? Devices are all UsagePage 1!
+				UsagePage := 0
+				ret := DLLWrappers.HidP_GetUsages(0, UsagePage, 0, &UsageList, UsageLength, PreparsedData, bRawData, dwSizeHid)
+				;ToolTip % "ret: " ret "`nUsagePage: " this.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
 				Loop % UsageLength {
 					if (A_Index > 1){
 						btnstring .= ", "
@@ -516,9 +462,8 @@ class CHID {
 					btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
 				}
 			}
-			;ToolTip % btnstring
+			ToolTip % btnstring
 		}
-		*/
 	}
 	
 	;----------------------------------------------------------------
