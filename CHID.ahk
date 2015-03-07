@@ -29,22 +29,23 @@ jt := new JoystickTester()
 return
 
 class JoystickTester extends CHID {
-	GUI_WIDTH := 651
+	GUI_WIDTH := 661
 	
 	__New(){
 		base.__New()
 		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
-		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|GUID|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
 		this.hLV := hLV
-		LV_Modifycol(1,80)
-		LV_Modifycol(2,130)
-		LV_Modifycol(3,40)
-		LV_Modifycol(4,140)
-		LV_Modifycol(5,50)
+		LV_Modifycol(1,50)
+		LV_Modifycol(2,40)
+		LV_Modifycol(3,130)
+		LV_Modifycol(4,40)
+		LV_Modifycol(5,140)
 		LV_Modifycol(6,50)
 		LV_Modifycol(7,50)
 		LV_Modifycol(8,50)
 		LV_Modifycol(9,50)
+		LV_Modifycol(10,50)
 		
 		Gui, Add, Text, % "hwndhAxes w300 h200 xm y240"
 		this.hAxes := hAxes
@@ -64,7 +65,7 @@ class JoystickTester extends CHID {
 				; Ignore devices with no buttons or axes
 				continue
 			}
-			LV_Add(, handle, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
+			LV_Add(, handle, device.GUID, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
 		}
 	}
 	
@@ -287,6 +288,11 @@ class CHID {
 			this.PID := PID
 			this.UsagePage := Data.Hid.usUsagePage
 			this.Usage := Data.Hid.usUsage
+			
+			; Get the unique device name
+			VarSetCapacity(dev_name, 256)
+			 DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
+			this.GUID := StrGet(&dev_name)
 			
 			if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
 				; Dirty hack for now, cannot seem to read "SYSTEM\CurrentControlSet\Control\MediaProperties\PrivateProperties\Joystick\OEM\VID_045E&PID_028E"
