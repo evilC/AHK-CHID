@@ -18,7 +18,6 @@ ToDo:
 * Calculate calibrated values? HidP_GetScaledUsageValue?
 * Clean up debug / Button+Axis state class properties (eg AxisDebug)
 * Improve error handling / logging.
-* cache size of preparsed data
 */
 
 #singleinstance force
@@ -234,6 +233,7 @@ class CHID extends _CHID_Base {
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
+		ppSize := 0		; Holds the size of the preparsed data, so we do not have to re-get it.
 
 		__New(parent, RAWINPUTDEVICELIST){
 			static DevSize := 32
@@ -291,10 +291,14 @@ class CHID extends _CHID_Base {
 			this.HumanName := HumanName
 			
 			; Decode capabilities
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+			if (this.ppSize = 0){
+				; Set size of Preparsed Data once to avoid excessive DLL calls
+				DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+				this.ppSize := ppSize
+			}
 			
-			VarSetCapacity(PreparsedData, ppSize)
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
+			VarSetCapacity(PreparsedData, this.ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", this.ppSize)
 			
 			VarSetCapacity(Cap, 64)
 			DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", &Cap)
@@ -478,9 +482,13 @@ class CHID extends _CHID_Base {
 
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
-			VarSetCapacity(PreparsedData, ppSize)
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
+			if (this.ppSize = 0){
+				; Shouldn't really happen as ppSize should be set when the device initializes
+				DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+				this.ppSize := ppSize
+			}
+			VarSetCapacity(PreparsedData, this.ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", this.ppSize)
 			btnstring := "Pressed Buttons:`n`n"
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
 				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
