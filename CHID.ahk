@@ -3,7 +3,7 @@
 A base set of methods for interfacing with HID API calls
 
 Source material
-RawInput functions: https://msdn.microsoft.com/en-us/library/windows/desktop/ff468896(v=vs.85).aspx
+RawInput reference: https://msdn.microsoft.com/en-us/library/windows/desktop/ff468895(v=vs.85).aspx
 HIDClass support routines: https://msdn.microsoft.com/en-us/library/windows/hardware/ff538865(v=vs.85).aspx
 
 http://www.codeproject.com/Articles/185522/Using-the-Raw-Input-API-to-Process-Joystick-Input
@@ -12,15 +12,16 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 
 ToDo:
 * Remove superfluous ByRefs.
-* Remove DLL wrappers? AHK-H would negate need for wrappers...
 * Better way of getting human-readable name?. HidD_GetProductString?
 * Tidy up duplicate definitions for constants
 * Get all axis values in one DLL call using HidP_GetUsageValueArray
 * Get change in button states using HidP_UsageListDifference
 * Calculate calibrated values? HidP_GetScaledUsageValue?
 * Clean up debug / Button+Axis state class properties
+* Improve error handling / logging.
 
 */
+
 #singleinstance force
 SetBatchLines -1
 OutputDebug, DBGVIEWCLEAR
@@ -47,9 +48,9 @@ class JoystickTester extends CHID {
 		LV_Modifycol(9,50)
 		LV_Modifycol(10,50)
 		
-		Gui, Add, Text, % "hwndhAxes w300 h200 xm y240"
+		Gui, Add, Text, % "hwndhAxes w300 h200 xm Section"
 		this.hAxes := hAxes
-		Gui, Add, Text, % "hwndhButtons w300 h200 x331 y240"
+		Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
 		this.hButtons := hButtons
 		
 		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
@@ -114,12 +115,12 @@ class CHID {
 	
 	__New(){
 		DeviceSize := 2 * A_PtrSize ; sizeof(RAWINPUTDEVICELIST)
-		DLLWrappers.GetRawInputDeviceList(0, NumDevices, DeviceSize)
+		DllCall("GetRawInputDeviceList", "Ptr", 0, "UInt*", NumDevices, "UInt", DeviceSize )
 		this.NumDevices := NumDevices
 		this._RAWINPUTDEVICELIST := {}
 		this.DevicesByHandle := {}
 		VarSetCapacity(Data, DeviceSize * NumDevices)
-		DLLWrappers.GetRawInputDeviceList(&Data, NumDevices, DeviceSize)
+		DllCall("GetRawInputDeviceList", "Ptr", &Data, "UInt*", NumDevices, "UInt", DeviceSize )
 		Loop % NumDevices {
 			b := (DeviceSize * (A_Index - 1))
 			this._RAWINPUTDEVICELIST[A_Index] := {
@@ -133,8 +134,6 @@ class CHID {
 				continue
 			}
 			this.DevicesByHandle[this._RAWINPUTDEVICELIST[A_Index].hDevice] := new this._CDevice(this, this._RAWINPUTDEVICELIST[A_Index])
-			OutputDebug % "Processing Device " this._RAWINPUTDEVICELIST[A_Index].hDevice
-			
 		}
 	}
 
@@ -163,7 +162,7 @@ class CHID {
 			Flags := 0x00000100 ; RIDEV_INPUTSINK
 			NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 			NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
-			r := DLLWrappers.RegisterRawInputDevices(&RAWINPUTDEVICE, 1, DevSize)
+			DllCall("RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
 			this.RegisteredUsages.Insert({UsagePage: device.UsagePage, Usage: device.Usage})
 			fn := this._MessageHandler.Bind(this)
 			OnMessage(0x00FF, fn)
@@ -182,9 +181,9 @@ class CHID {
 		QPX(true)
 		
 		; Get handle of device that message is for
-		DLLWrappers.GetRawInputData(lParam, this.RID_INPUT, 0, pcbSize, cbSizeHeader)
-		;VarSetCapacity(StructRAWINPUT, pcbSize)
-		if (!ret:=DLLWrappers.GetRawInputData(lParam, this.RID_INPUT, &StructRAWINPUT, pcbSize, cbSizeHeader))
+		DllCall("GetRawInputData", "Uint", lParam, "UInt", this.RID_INPUT, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader)
+		
+		if (!ret:=DllCall("GetRawInputData", "Uint", lParam, "UInt", this.RID_INPUT, "Ptr", &StructRAWINPUT, "UInt*", pcbSize, "Uint", cbSizeHeader))
 			MsgBox % this.ErrMsg() "`n" pcbSize "`n" ret
 		
 		ObjRAWINPUT := {}
@@ -260,9 +259,9 @@ class CHID {
 			
 			VarSetCapacity(RID_DEVICE_INFO, 32)
 			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-			r := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_DEVICEINFO, &RID_DEVICE_INFO, DevSize)
+			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICEINFO, "Ptr", &RID_DEVICE_INFO, "UInt*", DevSize)
 			if (!r){
-				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call"
+				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call" - this._parent.ErrMsg(r)
 			}
 			Data := {}
 			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
@@ -291,7 +290,7 @@ class CHID {
 			
 			; Get the unique device name
 			VarSetCapacity(dev_name, 256)
-			 DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
 			this.GUID := StrGet(&dev_name)
 			
 			if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
@@ -307,12 +306,13 @@ class CHID {
 			this.HumanName := HumanName
 			
 			; Decode capabilities
-			DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, 0, ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+			
 			VarSetCapacity(PreparsedData, ppSize)
-			ret := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
 			
 			VarSetCapacity(Cap, 64)
-			DLLWrappers.HidP_GetCaps(PreparsedData, &Cap)
+			DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", &Cap)
 
 			this.HIDP_CAPS := {
 			(Join,
@@ -341,7 +341,7 @@ class CHID {
 			
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
 				VarSetCapacity(ButtonCaps, (72 * this.HIDP_CAPS.NumberInputButtonCaps))
-				DLLWrappers.HidP_GetButtonCaps(0, &ButtonCaps, this.HIDP_CAPS.NumberInputButtonCaps, PreparsedData)
+				DllCall("Hid\HidP_GetButtonCaps", "UInt", 0, "Ptr", &ButtonCaps, "UShort*", this.HIDP_CAPS.NumberInputButtonCaps, "Ptr", &PreparsedData)
 				this.HIDP_BUTTON_CAPS := []
 				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
 					b := (A_Index -1) * 72
@@ -403,7 +403,7 @@ class CHID {
 			if (this.HIDP_CAPS.NumberInputValueCaps) {
 				;ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
 				VarSetCapacity(ValueCaps, (72 * this.HIDP_CAPS.NumberInputValueCaps))
-				DLLWrappers.HidP_GetValueCaps(0, &ValueCaps, this.HIDP_CAPS.NumberInputValueCaps, PreparsedData)
+				DllCall("Hid\HidP_GetValueCaps", "UInt", 0, "Ptr", &ValueCaps, "UShort*", this.HIDP_CAPS.NumberInputValueCaps, "Ptr", &PreparsedData)
 				
 				;this.HIDP_VALUE_CAPS := StructGetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
 				this.HIDP_VALUE_CAPS := []
@@ -495,9 +495,9 @@ class CHID {
 		GetPreparsedData(bRawData, dwSizeHid){
 			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	
-			DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, 0, ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
 			VarSetCapacity(PreparsedData, ppSize)
-			ret := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
 			btnstring := "Pressed Buttons:`n`n"
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
 				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
@@ -506,9 +506,9 @@ class CHID {
 					
 					VarSetCapacity(UsageList, 256)
 					
-					ret := DLLWrappers.HidP_GetUsages(0, this.HIDP_BUTTON_CAPS[A_Index].UsagePage, 0, &UsageList, UsageLength, PreparsedData, bRawData, dwSizeHid)
+					ret := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", 0, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 					if (ret < 0){
-						MsgBox % this.HidP_ErrMsg(ret)
+						MsgBox % A_ThisFunc ": Error: " ret "`n`n" this._parent.HidP_ErrMsg(ret)
 					}
 					Loop % UsageLength {
 						if (A_Index > 1){
@@ -530,7 +530,7 @@ class CHID {
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
-					DLLWrappers.HidP_GetUsageValue(0, this.HIDP_VALUE_CAPS[A_Index].UsagePage, 0, this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, value, PreparsedData, bRawData, dwSizeHid)
+					DllCall("Hid\HidP_GetUsageValue", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 					value := NumGet(value,0,"Uint")
 					axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
 
@@ -597,199 +597,6 @@ class CHID {
 		} else {
 			return "UNKNOWN ERROR (" ErrMsg ")"
 		}
-	}}
-
-; Just an easy way to let me copy across code for now
-Class DLLWrappers {
-	;----------------------------------------------------------------
-	; Function:     ErrMsg
-	;               Get the description of the operating system error
-	;               
-	; Parameters:
-	;               ErrNum  - Error number (default = A_LastError)
-	;
-	; Returns:
-	;               String
-	;
-	ErrMsg(ErrNum=""){ 
-		if ErrNum=
-			ErrNum := A_LastError
-
-		VarSetCapacity(ErrorString, 1024) ;String to hold the error-message.    
-		DllCall("FormatMessage" 
-			 , "UINT", 0x00001000     ;FORMAT_MESSAGE_FROM_SYSTEM: The function should search the system message-table resource(s) for the requested message. 
-			 , "UINT", 0              ;A handle to the module that contains the message table to search.
-			 , "UINT", ErrNum 
-			 , "UINT", 0              ;Language-ID is automatically retreived 
-			 , "Str",  ErrorString 
-			 , "UINT", 1024           ;Buffer-Length 
-			 , "str",  "")            ;An array of values that are used as insert values in the formatted message. (not used) 
-		
-		StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
-		return %ErrorString% 
-	}
-
-	RegisterRawInputDevices(ByRef pRawInputDevices, uiNumDevices, cbSize := 0){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645600%28v=vs.85%29.aspx
-		
-		BOOL WINAPI RegisterRawInputDevices(
-		  _In_  PCRAWINPUTDEVICE pRawInputDevices,
-		  _In_  UINT uiNumDevices,
-		  _In_  UINT cbSize
-		);
-		
-		Uses RAWINPUTDEVICE structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645565(v=vs.85).aspx
-		*/
-		
-		return DllCall("RegisterRawInputDevices", "Ptr", pRawInputDevices, "UInt", uiNumDevices, "UInt", cbSize )
-	}
-	
-	GetRawInputDeviceList(ByRef pRawInputDeviceList := 0, ByRef puiNumDevices := 0, cbSize := 0){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645598%28v=vs.85%29.aspx
-
-		UINT WINAPI GetRawInputDeviceList(
-		  _Out_opt_  PRAWINPUTDEVICELIST pRawInputDeviceList,		// An array of RAWINPUTDEVICELIST structures for the devices attached to the system.
-																	// If NULL, the number of devices are returned in *puiNumDevices
-		  _Inout_    PUINT puiNumDevices,							// If pRawInputDeviceList is NULL, the function populates this variable with the number of devices attached to the system;
-																	// otherwise, this variable specifies the number of RAWINPUTDEVICELIST structures that can be contained in the buffer to which
-																	// pRawInputDeviceList points. If this value is less than the number of devices attached to the system,
-																	// the function returns the actual number of devices in this variable and fails with ERROR_INSUFFICIENT_BUFFER.
-		  _In_       UINT cbSize									// The size of a RAWINPUTDEVICELIST structure, in bytes
-		);
-		
-		Uses RAWINPUTDEVICELIST structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645568(v=vs.85).aspx
-		*/
-		return DllCall("GetRawInputDeviceList", "Ptr", pRawInputDeviceList, "UInt*", puiNumDevices, "UInt", cbSize )
-	}
-	
-	GetRawInputDeviceInfo(hDevice, uiCommand := 0, ByRef pData := 0, ByRef pcbSize := 0){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645597%28v=vs.85%29.aspx
-		
-		UINT WINAPI GetRawInputDeviceInfo(
-		  _In_opt_     HANDLE hDevice,		// A handle to the raw input device. This comes from the lParam of the WM_INPUT message, from the hDevice member of RAWINPUTHEADER
-											// or from GetRawInputDeviceList.
-		  _In_         UINT uiCommand,		// Specifies what data will be returned in pData. This parameter can be one of the following values:
-											// RIDI_DEVICENAME 0x20000007 -		pData points to a string that contains the device name.
-											//									For this uiCommand only, the value in pcbSize is the character count (not the byte count).
-											// RIDI_DEVICEINFO 0x2000000b -		pData points to an RID_DEVICE_INFO structure.
-											// RIDI_PREPARSEDDATA 0x20000005 -	pData points to the previously parsed data.
-		  _Inout_opt_  LPVOID pData,		// A pointer to a buffer that contains the information specified by uiCommand.
-											// If uiCommand is RIDI_DEVICEINFO, set the cbSize member of RID_DEVICE_INFO to sizeof(RID_DEVICE_INFO) before calling GetRawInputDeviceInfo.
-		  _Inout_      PUINT pcbSize		// The size, in bytes, of the data in pData
-		);
-		
-		Uses RID_DEVICE_INFO structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645581%28v=vs.85%29.aspx
-		*/
-		return DllCall("GetRawInputDeviceInfo", "Ptr", hDevice, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize)
-		*/
-	}
-	
-	GetRawInputData(ByRef hRawInput, uiCommand := -1, ByRef pData := 0, ByRef pcbSize := 0, cbSizeHeader := 0){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/desktop/ms645596%28v=vs.85%29.aspx
-		
-		UINT WINAPI GetRawInputData(
-		  _In_       HRAWINPUT hRawInput,
-		  _In_       UINT uiCommand,
-		  _Out_opt_  LPVOID pData,
-		  _Inout_    PUINT pcbSize,
-		  _In_       UINT cbSizeHeader
-		);		
-		
-		Uses RAWINPUT structure: https://msdn.microsoft.com/en-us/library/windows/desktop/ms645562(v=vs.85).aspx
-
-		*/
-		return DllCall("GetRawInputData", "Uint", hRawInput, "UInt", uiCommand, "Ptr", pData, "UInt*", pcbSize, "Uint", cbSizeHeader)
-	}
-	
-	HidP_GetCaps(ByRef PreparsedData, ByRef Capabilities){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539715%28v=vs.85%29.aspx
-		
-		NTSTATUS __stdcall HidP_GetCaps(
-		  _In_   PHIDP_PREPARSED_DATA PreparsedData,
-		  _Out_  PHIDP_CAPS Capabilities
-		);
-		returns HIDP_STATUS_ value, eg HIDP_STATUS_SUCCESS
-		
-		Uses HIDP_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539697(v=vs.85).aspx
-
-		*/
-		;Capabilities := new _Struct("WinStructs.HIDP_CAPS")
-		return DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", Capabilities)
-	}
-	
-	HidP_GetButtonCaps(ReportType, ByRef ButtonCaps, ByRef ButtonCapsLength, ByRef PreparsedData){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539707(v=vs.85).aspx
-		
-		NTSTATUS __stdcall HidP_GetButtonCaps(
-		  _In_     HIDP_REPORT_TYPE ReportType,
-		  _Out_    PHIDP_BUTTON_CAPS ButtonCaps,
-		  _Inout_  PUSHORT ButtonCapsLength,
-		  _In_     PHIDP_PREPARSED_DATA PreparsedData
-		);
-		
-		Uses HIDP_BUTTON_CAPS structure: https://msdn.microsoft.com/en-gb/library/windows/hardware/ff539693(v=vs.85).aspx
-		*/
-		return DllCall("Hid\HidP_GetButtonCaps", "UInt", ReportType, "Ptr", ButtonCaps, "UShort*", ButtonCapsLength, "Ptr", &PreparsedData)
-	}
-	
-	HidP_GetValueCaps(ReportType, ByRef ValueCaps, ByRef ValueCapsLength, ByRef PreparsedData){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539754%28v=vs.85%29.aspx
-		
-		NTSTATUS __stdcall HidP_GetValueCaps(
-		  _In_     HIDP_REPORT_TYPE ReportType,
-		  _Out_    PHIDP_VALUE_CAPS ValueCaps,
-		  _Inout_  PUSHORT ValueCapsLength,
-		  _In_     PHIDP_PREPARSED_DATA PreparsedData
-		);
-		
-		Uses HIDP_VALUE_CAPS structure: https://msdn.microsoft.com/en-us/library/windows/hardware/ff539832(v=vs.85).aspx
-		*/
-		return DllCall("Hid\HidP_GetValueCaps", "UInt", ReportType, "Ptr", ValueCaps, "UShort*", ValueCapsLength, "Ptr", &PreparsedData)
-	}
-	
-	HidP_GetUsages(ReportType, UsagePage, LinkCollection, ByRef UsageList, ByRef UsageLength, ByRef PreparsedData, ByRef Report, ReportLength){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539742%28v=vs.85%29.aspx
-		
-		NTSTATUS __stdcall HidP_GetUsages(
-		  _In_     HIDP_REPORT_TYPE ReportType,
-		  _In_     USAGE UsagePage,
-		  _In_     USHORT LinkCollection,
-		  _Out_    PUSAGE UsageList,
-		  _Inout_  PULONG UsageLength,
-		  _In_     PHIDP_PREPARSED_DATA PreparsedData,
-		  _Out_    PCHAR Report,
-		  _In_     ULONG ReportLength
-		);
-		*/
-		
-		return DllCall("Hid\HidP_GetUsages", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "Ptr", UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
-	}
-	
-	HidP_GetUsageValue(ReportType, UsagePage, LinkCollection, Usage, ByRef UsageValue, ByRef PreparsedData, ByRef Report, ReportLength){
-		/*
-		https://msdn.microsoft.com/en-us/library/windows/hardware/ff539748%28v=vs.85%29.aspx
-		
-		NTSTATUS __stdcall HidP_GetUsageValue(
-		  _In_   HIDP_REPORT_TYPE ReportType,
-		  _In_   USAGE UsagePage,
-		  _In_   USHORT LinkCollection,
-		  _In_   USAGE Usage,
-		  _Out_  PULONG UsageValue,
-		  _In_   PHIDP_PREPARSED_DATA PreparsedData,
-		  _In_   PCHAR Report,
-		  _In_   ULONG ReportLength
-		);
-		*/
-		
-		return DllCall("Hid\HidP_GetUsageValue", "uint", ReportType, "ushort", UsagePage, "ushort", LinkCollection, "ushort", Usage, "Ptr", &UsageValue, "Ptr", &PreparsedData, "Ptr", Report, "Uint", ReportLength)
 	}
 }
 
