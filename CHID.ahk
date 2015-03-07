@@ -489,24 +489,22 @@ class CHID {
 			ret := DLLWrappers.GetRawInputDeviceInfo(this.handle, RIDI_PREPARSEDDATA, &PreparsedData, ppSize)
 			btnstring := "Pressed Buttons:`n`n"
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
-				; ToDo: Loop through this.HIDP_BUTTON_CAPS[x] - Caps.NumberInputButtonCaps might not be 1
-				
-				btns := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
-				UsageLength := btns
-				
-				VarSetCapacity(UsageList, 512)
-				
-				; ToDo: Why does UsagePage 0 only work? Devices are all UsagePage 1!
-				UsagePage := 0
-				ret := DLLWrappers.HidP_GetUsages(0, UsagePage, 0, &UsageList, UsageLength, PreparsedData, bRawData, dwSizeHid)
-				;ToolTip % "ret: " ret "`nUsagePage: " this.HIDP_BUTTON_CAPS.UsagePage "`nLength Out: " UsageLength "`nLength In: " btns
-				Loop % UsageLength {
-					if (A_Index > 1){
-						btnstring .= ", "
+				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
+					btns := (Range:=this.HIDP_BUTTON_CAPS[A_Index].Range).UsageMax - Range.UsageMin + 1
+					UsageLength := btns
+					
+					VarSetCapacity(UsageList, 256)
+					
+					ret := DLLWrappers.HidP_GetUsages(0, this.HIDP_BUTTON_CAPS[A_Index].UsagePage, 0, &UsageList, UsageLength, PreparsedData, bRawData, dwSizeHid)
+					if (ret < 0){
+						MsgBox % this.HidP_ErrMsg(ret)
 					}
-					; ToDo: This should be an array of USHORTs? Why do we have to use a size of 4 per button?
-					;btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
-					btnstring .= NumGet(UsageList,(A_Index -1) * 4, "Ushort")
+					Loop % UsageLength {
+						if (A_Index > 1){
+							btnstring .= ", "
+						}
+						btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+					}
 				}
 			}
 			this.btnstring := btnstring
