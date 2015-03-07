@@ -13,7 +13,7 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 ToDo:
 * Remove superfluous ByRefs.
 * Remove DLL wrappers? AHK-H would negate need for wrappers...
-* Implement unique, persistent name. HidD_GetHidGuid? RIDI_DEVICENAME in GetRawInputDeviceInfo? HidD_GetProductString?
+* Better way of getting human-readable name?. HidD_GetProductString?
 * Tidy up duplicate definitions for constants
 * Get all axis values in one DLL call using HidP_GetUsageValueArray
 * Get change in button states using HidP_UsageListDifference
