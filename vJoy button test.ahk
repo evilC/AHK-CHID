@@ -39,3 +39,12 @@ F10 up::
 		myStick.SetBtn(0, A_Index)
 	}
 	Return
+
+F12::
+	key_down := !key_down
+	Loop 128 {
+		myStick.SetBtn(key_down, A_Index)
+	}
+	SoundBeep
+	; On press of F10 try and press button 1
+	Return
