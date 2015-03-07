@@ -11,15 +11,14 @@ HID Usages: http://www.freebsddiary.org/APC/usb_hid_usages.php
 Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140a02c098732961c685e9c04994bf57b:bsnes/ruby/input/rawinput.cpp#Lundefined
 
 ToDo:
-* Remove superfluous ByRefs.
+* Solve why HIDP_VALUE_CAPS.IsRange is always 0. Or is that not the indicator for which union to use?
 * Better way of getting human-readable name?. HidD_GetProductString?
-* Tidy up duplicate definitions for constants
 * Get all axis values in one DLL call using HidP_GetUsageValueArray
 * Get change in button states using HidP_UsageListDifference
 * Calculate calibrated values? HidP_GetScaledUsageValue?
-* Clean up debug / Button+Axis state class properties
+* Clean up debug / Button+Axis state class properties (eg AxisDebug)
 * Improve error handling / logging.
-
+* cache size of preparsed data
 */
 
 #singleinstance force
@@ -98,15 +97,7 @@ Esc::
 GuiClose:
 	ExitApp
 
-class CHID {
-	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
-	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
-	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	
+class CHID extends _CHID_Base {
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
 	DevicesByHandle := {}				; Array of _CDevice objects, indexed by handle
@@ -159,7 +150,7 @@ class CHID {
 			VarSetCapacity(RAWINPUTDEVICE, DevSize)
 			NumPut(device.UsagePage, RAWINPUTDEVICE, 0, "UShort")
 			NumPut(device.Usage, RAWINPUTDEVICE, 2, "UShort")
-			Flags := 0x00000100 ; RIDEV_INPUTSINK
+			Flags := this.RIDEV_INPUTSINK
 			NumPut(Flags, RAWINPUTDEVICE, 4, "Uint")
 			NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 			DllCall("RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
@@ -173,8 +164,6 @@ class CHID {
 	_MessageHandler(wParam, lParam){
 		Critical
 		global hAxes, hButtons, hProcessTime
-		
-		static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
 		static cbSizeHeader := 8 + (A_PtrSize * 2)
 		static StructRAWINPUT,init:= VarSetCapacity(StructRAWINPUT, 10240)
 		static bRawDataOffset := (8 + (A_PtrSize * 2)) + 8
@@ -196,7 +185,7 @@ class CHID {
 			wParam: NumGet(StructRAWINPUT, 8 + A_PtrSize, "Uint")
 		)}
 		b := cbSizeHeader
-		if (ObjRAWINPUT.header.dwType = RIM_TYPEHID){
+		if (ObjRAWINPUT.header.dwType = this.RIM_TYPEHID){
 			ObjRAWINPUT.hid := {
 			(Join,
 				dwSizeHid: NumGet(StructRAWINPUT, b, "Uint")
@@ -229,7 +218,7 @@ class CHID {
 
 	}
 	
-	class _CDevice {
+	class _CDevice extends _CHID_Base {
 		; Exposed properties
 		RID_DEVICE_INFO := {}	; An object containing the data from the RIDI_DEVICEINFO GetRawInputDeviceInfo call
 		VID := 0				; VID of the device, in the format it would appear in the registry
@@ -245,13 +234,9 @@ class CHID {
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
-		static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 
 		__New(parent, RAWINPUTDEVICELIST){
-			static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
-			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 			static DevSize := 32
-			static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
 			
 			this._parent := parent
 			this.handle := RAWINPUTDEVICELIST.hDevice
@@ -259,14 +244,14 @@ class CHID {
 			
 			VarSetCapacity(RID_DEVICE_INFO, 32)
 			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
-			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICEINFO, "Ptr", &RID_DEVICE_INFO, "UInt*", DevSize)
+			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_DEVICEINFO, "Ptr", &RID_DEVICE_INFO, "UInt*", DevSize)
 			if (!r){
-				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call" - this._parent.ErrMsg(r)
+				MsgBox % A_ThisFunc " Error in GetRawInputDeviceInfo call" - this.ErrMsg(r)
 			}
 			Data := {}
 			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
 			Data.dwType := NumGet(RID_DEVICE_INFO, 4, "Uint")
-			if (Data.dwType = RIM_TYPEHID){
+			if (Data.dwType = this.RIM_TYPEHID){
 				Data.hid := {
 				(Join,
 					dwVendorId: NumGet(RID_DEVICE_INFO, 8, "Uint")
@@ -290,7 +275,7 @@ class CHID {
 			
 			; Get the unique device name
 			VarSetCapacity(dev_name, 256)
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
 			this.GUID := StrGet(&dev_name)
 			
 			if (Data.hid.dwVendorID = 0x45E && Data.hid.dwProductID = 0x28E){
@@ -306,10 +291,10 @@ class CHID {
 			this.HumanName := HumanName
 			
 			; Decode capabilities
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
 			
 			VarSetCapacity(PreparsedData, ppSize)
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
 			
 			VarSetCapacity(Cap, 64)
 			DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", &Cap)
@@ -435,7 +420,7 @@ class CHID {
 						PhysicalMax: NumGet(ValueCaps, b + 52, "int")
 					)}
 					; ToDo: Why is IsRange not 1?
-					;if (out[A_Index].IsRange)
+					;if (this.HIDP_VALUE_CAPS[A_Index].IsRange)
 						this.HIDP_VALUE_CAPS[A_Index].Range := {
 						(Join,
 							UsageMin: NumGet(ValueCaps, b + 56, "UShort")
@@ -475,7 +460,7 @@ class CHID {
 						if (Axes != ""){
 							Axes .= ","
 						}
-						Axes .= AxisNames[Type]
+						Axes .= this.AxisNames[Type]
 						AxisCount++
 					}
 				}
@@ -493,11 +478,9 @@ class CHID {
 
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
-			static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
-	
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
 			VarSetCapacity(PreparsedData, ppSize)
-			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
+			DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", ppSize)
 			btnstring := "Pressed Buttons:`n`n"
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
 				Loop % this.HIDP_CAPS.NumberInputButtonCaps {
@@ -508,7 +491,7 @@ class CHID {
 					
 					ret := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", 0, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 					if (ret < 0){
-						MsgBox % A_ThisFunc ": Error: " ret "`n`n" this._parent.HidP_ErrMsg(ret)
+						MsgBox % A_ThisFunc ": Error: " ret "`n`n" this.HidP_ErrMsg(ret)
 					}
 					Loop % UsageLength {
 						if (A_Index > 1){
@@ -541,7 +524,7 @@ class CHID {
 				VarSetCapacity(UsageValue, UsageValueByteLength)
 				r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Usage, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 				if (r < 0){
-					MsgBox % A_ThisFunc " Error: " this._parent.HidP_ErrMsg(r)
+					MsgBox % A_ThisFunc " Error: " this.HidP_ErrMsg(r)
 				}
 				*/
 				;ToolTip % "ret: " r
@@ -550,6 +533,39 @@ class CHID {
 		}
 	}
 	
+
+}
+
+class _CHID_Base {
+	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
+    static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
+	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
+	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
+	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
+	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
+
+	HidP_ErrMsg(ErrNum){
+		if (ErrNum = "") {
+			return "NO ERROR CODE"
+		} else if (ErrNum = this.HIDP_STATUS_BUFFER_TOO_SMALL){
+			return "HIDP_STATUS_BUFFER_TOO_SMALL"
+		} else if (ErrNum = this.HIDP_STATUS_INCOMPATIBLE_REPORT_ID){
+			return "HIDP_STATUS_INCOMPATIBLE_REPORT_ID"
+		} else if (ErrNum = this.HIDP_STATUS_USAGE_NOT_FOUND){
+			return "HIDP_STATUS_USAGE_NOT_FOUND"
+		} else if (ErrNum = this.HIDP_STATUS_INVALID_REPORT_LENGTH){
+			return "HIDP_STATUS_INVALID_REPORT_LENGTH"
+		} else if (ErrNum = this.HIDP_STATUS_INVALID_REPORT_TYPE){
+			return "HIDP_STATUS_INVALID_REPORT_TYPE"
+		} else if (ErrNum = this.HIDP_STATUS_INVALID_PREPARSED_DATA){
+			return "HIDP_STATUS_INVALID_PREPARSED_DATA"
+		} else {
+			return "UNKNOWN ERROR (" ErrMsg ")"
+		}
+	}
+
 	;----------------------------------------------------------------
 	; Function:     ErrMsg
 	;               Get the description of the operating system error
@@ -577,27 +593,7 @@ class CHID {
 		StringReplace, ErrorString, ErrorString, `r`n, %A_Space%, All      ;Replaces newlines by A_Space for inline-output   
 		return %ErrorString% 
 	}
-	
-	HidP_ErrMsg(ErrNum){
-		static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
-		if (ErrNum = "") {
-			return "NO ERROR CODE"
-		} else if (ErrNum = HIDP_STATUS_BUFFER_TOO_SMALL){
-			return "HIDP_STATUS_BUFFER_TOO_SMALL"
-		} else if (ErrNum = HIDP_STATUS_INCOMPATIBLE_REPORT_ID){
-			return "HIDP_STATUS_INCOMPATIBLE_REPORT_ID"
-		} else if (ErrNum = HIDP_STATUS_USAGE_NOT_FOUND){
-			return "HIDP_STATUS_USAGE_NOT_FOUND"
-		} else if (ErrNum = HIDP_STATUS_INVALID_REPORT_LENGTH){
-			return "HIDP_STATUS_INVALID_REPORT_LENGTH"
-		} else if (ErrNum = HIDP_STATUS_INVALID_REPORT_TYPE){
-			return "HIDP_STATUS_INVALID_REPORT_TYPE"
-		} else if (ErrNum = HIDP_STATUS_INVALID_PREPARSED_DATA){
-			return "HIDP_STATUS_INVALID_PREPARSED_DATA"
-		} else {
-			return "UNKNOWN ERROR (" ErrMsg ")"
-		}
-	}
+
 }
 
 QPX( N=0 ) { ; Wrapper for QueryPerformanceCounter()by SKAN | CD: 06/Dec/2009
