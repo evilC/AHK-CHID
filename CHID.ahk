@@ -330,9 +330,10 @@ class CHID {
 			AxisCount := 0
 			Hats := 0
 			btns := 0
+			btn_min := 0
+			mtn_max := 0
 			
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
-				
 				VarSetCapacity(ButtonCaps, (72 * this.HIDP_CAPS.NumberInputButtonCaps))
 				DLLWrappers.HidP_GetButtonCaps(0, &ButtonCaps, this.HIDP_CAPS.NumberInputButtonCaps, PreparsedData)
 				this.HIDP_BUTTON_CAPS := []
@@ -365,7 +366,12 @@ class CHID {
 							DataIndexMin: NumGet(ButtonCaps, b + 68, "UShort")
 							DataIndexMax: NumGet(ButtonCaps, b + 70, "UShort")
 						)}
-						
+						if (this.HIDP_BUTTON_CAPS[A_Index].Range.UsageMax > btn_max){
+							btn_max := this.HIDP_BUTTON_CAPS[A_Index].Range.UsageMax
+						}
+						if (this.HIDP_BUTTON_CAPS[A_Index].Range.UsageMin > btn_min){
+							btn_min := this.HIDP_BUTTON_CAPS[A_Index].Range.UsageMin
+						}
 					} else {
 						this.HIDP_BUTTON_CAPS[A_Index].NotRange := {
 						(Join,
@@ -380,9 +386,8 @@ class CHID {
 						)}
 					}
 				}
-				btns := (Range:=this.HIDP_BUTTON_CAPS.1.Range).UsageMax - Range.UsageMin + 1
-				if (btns = ""){
-					btns := 0
+				if (btn_max){
+					btns := btn_max - btn_min + 1
 				}
 			}
 			
