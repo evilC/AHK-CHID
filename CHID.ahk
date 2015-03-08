@@ -19,6 +19,86 @@ ToDo:
 * Clean up debug / Button+Axis state class properties (eg AxisDebug)
 */
 
+; REQUIRES AHK >= v1.1.20.00
+
+;#include CHID.ahk
+
+#singleinstance force
+SetBatchLines -1
+OutputDebug, DBGVIEWCLEAR
+
+jt := new JoystickTester()
+return
+
+class JoystickTester extends CHID {
+	GUI_WIDTH := 661
+	
+	__New(){
+		base.__New()
+		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
+		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|GUID|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
+		this.hLV := hLV
+		LV_Modifycol(1,50)
+		LV_Modifycol(2,40)
+		LV_Modifycol(3,130)
+		LV_Modifycol(4,40)
+		LV_Modifycol(5,140)
+		LV_Modifycol(6,50)
+		LV_Modifycol(7,50)
+		LV_Modifycol(8,50)
+		LV_Modifycol(9,50)
+		LV_Modifycol(10,50)
+		
+		Gui, Add, Text, % "hwndhAxes w300 h200 xm Section"
+		this.hAxes := hAxes
+		Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
+		this.hButtons := hButtons
+		
+		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
+		Gui, Add, Text, % "hwndhProcessTime w50 ys"
+		this.hProcessTime := hProcessTime
+		Gui, Show, y0, CHID Joystick Tester
+		fn := this.DeviceSelected.Bind(this)
+		
+		GuiControl +g, % this.hLV, % fn
+		
+		for handle, device in this.DevicesByHandle {
+			if (!device.NumButtons && !device.NumAxes){
+				; Ignore devices with no buttons or axes
+				continue
+			}
+			LV_Add(, handle, device.GUID, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
+		}
+	}
+	
+	DeviceSelected(){
+		static LastSelected := -1
+		; Listviews fire g-labels on down event and up event of click, filter out up event
+		LV_GetText(handle, LV_GetNext())
+		if (A_GuiEvent = "i"){
+			;this.RegisterDevice(this.DevicesByHandle[handle])
+			fn := this.DeviceChanged.Bind(this)
+			this.DevicesByHandle[handle].RegisterCallback(fn)
+		}
+		return 1
+	}
+	
+	; A subscribed device changed
+	DeviceChanged(device){
+		LV_GetText(handle, LV_GetNext())
+		if (device.handle = handle){
+			; Device is the one currently selected in the LV
+			GuiControl, , % this.hButtons, % device.btnstring
+			GuiControl, , % this.hAxes, % device.AxisDebug
+			GuiControl, , % this.hProcessTime, % device._ProcessTime
+		}
+	}
+}
+
+Esc::
+GuiClose:
+	ExitApp
+
 class CHID extends _CHID_Base {
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
@@ -468,7 +548,16 @@ class CHID extends _CHID_Base {
 					
 					VarSetCapacity(UsageList, 256)
 					
-					r := DllCall("Hid\HidP_GetUsages", "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+					r := DllCall("Hid\HidP_GetUsages"
+						;, "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID
+						, "uint", 0		; vJoy seems to always be 1, we need it to be 0
+						, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage
+						, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection
+						, "Ptr", &UsageList
+						, "Uint*", UsageLength
+						, "Ptr", &PreparsedData
+						, "Ptr", bRawData
+						, "Uint", dwSizeHid)
 					if (r < 0){
 						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call - " this.HidP_ErrMsg(r)
 					}
@@ -497,18 +586,45 @@ class CHID extends _CHID_Base {
 						; hat switch
 						if (!hat_count){
 							; first hat processed
-							UsageValueByteLength := 1024
+							UsageValueByteLength := 4
 							VarSetCapacity(UsageValue, UsageValueByteLength)
+							NumPut(UsageValue,0,0x39, "uchar")
+							NumPut(UsageValue,1,0x39, "uchar")
+							NumPut(UsageValue,2,0x39, "uchar")
+							NumPut(UsageValue,3,0x39, "uchar")
 							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							r := DllCall("Hid\HidP_GetUsageValueArray", "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
-							OutputDebug % "lc: " this.HIDP_VALUE_CAPS[A_Index].LinkCollection
+							r := DllCall("Hid\HidP_GetUsageValueArray"
+								;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
+								, "uint", 0
+								, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
+								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
+								, "ushort", 0
+								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
+								, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
+								;, "Ptr", &UsageValue
+								, "Ptr", &UsageValue
+								, "Ushort", UsageValueByteLength
+								, "Ptr", &PreparsedData
+								, "Ptr", bRawData
+								, "Uint", dwSizeHid)
+							OutputDebug % "el: " A_LastError
 							if (r < 0){
 								OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
 							}
 						}
 						hat_count++
 					} else {
-						r := DllCall("Hid\HidP_GetUsageValue", "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+						OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
+						r := DllCall("Hid\HidP_GetUsageValue"
+							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
+							, "uint", 0		; vjoy has a ReportID of 1 - bug?
+							, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
+							, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
+							, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
+							, "Ptr", &value
+							, "Ptr", &PreparsedData
+							, "Ptr", bRawData
+							, "Uint", dwSizeHid)
 						if (r < 0){
 							OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
 						}
@@ -542,7 +658,7 @@ class _CHID_Base {
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
-	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
+	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_NOT_VALUE_ARRAY := -1072627701,HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
@@ -562,6 +678,8 @@ class _CHID_Base {
 			return "HIDP_STATUS_INVALID_REPORT_TYPE"
 		} else if (ErrNum = this.HIDP_STATUS_INVALID_PREPARSED_DATA){
 			return "HIDP_STATUS_INVALID_PREPARSED_DATA"
+		} else if (ErrNum = this.HIDP_STATUS_NOT_VALUE_ARRAY){
+			return "HIDP_STATUS_NOT_VALUE_ARRAY"
 		} else {
 			return "UNKNOWN ERROR (" ErrMsg ")"
 		}
