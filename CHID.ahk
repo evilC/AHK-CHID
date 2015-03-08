@@ -39,7 +39,7 @@ class CHID extends _CHID_Base {
 		VarSetCapacity(Data, DeviceSize * NumDevices)
 		r := DllCall("GetRawInputDeviceList", "Ptr", &Data, "UInt*", NumDevices, "UInt", DeviceSize )
 		if (r < 0){
-			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceList DLL call" - this.ErrMsg(r)
+			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceList DLL call - " this.ErrMsg(r)
 		}
 
 		Loop % NumDevices {
@@ -85,7 +85,7 @@ class CHID extends _CHID_Base {
 			NumPut(WinExist("A"), RAWINPUTDEVICE, 8, "Uint")
 			r := DllCall("RegisterRawInputDevices", "Ptr", &RAWINPUTDEVICE, "UInt", 1, "UInt", DevSize )
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in RegisterRawInputDevices DLL call" - this.ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in RegisterRawInputDevices DLL call - " this.ErrMsg(r)
 			}
 
 			this.RegisteredUsages.Insert({UsagePage: device.UsagePage, Usage: device.Usage})
@@ -106,13 +106,13 @@ class CHID extends _CHID_Base {
 		; Get handle of device that message is for
 		r := DllCall("GetRawInputData", "Uint", lParam, "UInt", this.RID_INPUT, "Ptr", 0, "UInt*", pcbSize, "Uint", cbSizeHeader)
 		if (r < 0){
-			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputData DLL call" - this.ErrMsg(r)
+			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputData DLL call - " this.ErrMsg(r)
 		}
 
 		
 		r:=DllCall("GetRawInputData", "Uint", lParam, "UInt", this.RID_INPUT, "Ptr", &StructRAWINPUT, "UInt*", pcbSize, "Uint", cbSizeHeader)
 		if (r < 0){
-			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputData DLL call" - this.ErrMsg(r)
+			OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputData DLL call - " this.ErrMsg(r)
 		}
 
 		
@@ -188,7 +188,7 @@ class CHID extends _CHID_Base {
 			NumPut(32, RID_DEVICE_INFO, 0, "unit") ; cbSize must equal sizeof(RID_DEVICE_INFO) = 32
 			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_DEVICEINFO, "Ptr", &RID_DEVICE_INFO, "UInt*", DevSize)
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 			}
 			Data := {}
 			Data.cbSize := NumGet(RID_DEVICE_INFO, 0, "Uint")
@@ -219,7 +219,7 @@ class CHID extends _CHID_Base {
 			VarSetCapacity(dev_name, 256)
 			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_DEVICENAME, "Ptr", &dev_name, "UInt*", 256)
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 			}
 
 			this.GUID := StrGet(&dev_name)
@@ -241,7 +241,7 @@ class CHID extends _CHID_Base {
 				; Set size of Preparsed Data once to avoid excessive DLL calls
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
 				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+					OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 				}
 
 				this.ppSize := ppSize
@@ -250,13 +250,13 @@ class CHID extends _CHID_Base {
 			VarSetCapacity(PreparsedData, this.ppSize)
 			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", this.ppSize)
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 			}
 			
 			VarSetCapacity(Cap, 64)
 			DllCall("Hid\HidP_GetCaps", "Ptr", &PreparsedData, "Ptr", &Cap)
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetCaps DLL call" - this.HidP_ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetCaps DLL call - " this.HidP_ErrMsg(r)
 			}
 
 			this.HIDP_CAPS := {
@@ -288,7 +288,7 @@ class CHID extends _CHID_Base {
 				VarSetCapacity(ButtonCaps, (72 * this.HIDP_CAPS.NumberInputButtonCaps))
 				r := DllCall("Hid\HidP_GetButtonCaps", "UInt", 0, "Ptr", &ButtonCaps, "UShort*", this.HIDP_CAPS.NumberInputButtonCaps, "Ptr", &PreparsedData)
 				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetButtonCaps DLL call" - this.HidP_ErrMsg(r)
+					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetButtonCaps DLL call - " this.HidP_ErrMsg(r)
 				}
 
 				this.HIDP_BUTTON_CAPS := []
@@ -354,7 +354,7 @@ class CHID extends _CHID_Base {
 				VarSetCapacity(ValueCaps, (72 * this.HIDP_CAPS.NumberInputValueCaps))
 				r := DllCall("Hid\HidP_GetValueCaps", "UInt", 0, "Ptr", &ValueCaps, "UShort*", this.HIDP_CAPS.NumberInputValueCaps, "Ptr", &PreparsedData)
 				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetValueCaps DLL call" - this.HidP_ErrMsg(r)
+					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetValueCaps DLL call - " this.HidP_ErrMsg(r)
 				}
 				
 				;this.HIDP_VALUE_CAPS := StructGetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
@@ -449,7 +449,7 @@ class CHID extends _CHID_Base {
 				; Shouldn't really happen as ppSize should be set when the device initializes
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
 				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+					OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 				}
 				
 				this.ppSize := ppSize
@@ -457,7 +457,7 @@ class CHID extends _CHID_Base {
 			VarSetCapacity(PreparsedData, this.ppSize)
 			r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", &PreparsedData, "UInt*", this.ppSize)
 			if (r < 0){
-				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call" - this.ErrMsg(r)
+				OutputDebug % A_ThisFunc " Error (" r ") in GetRawInputDeviceInfo DLL call - " this.ErrMsg(r)
 			}
 
 			btnstring := "Pressed Buttons:`n`n"
@@ -468,9 +468,9 @@ class CHID extends _CHID_Base {
 					
 					VarSetCapacity(UsageList, 256)
 					
-					r := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", 0, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+					r := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 					if (r < 0){
-						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call" - this.HidP_ErrMsg(r)
+						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call - " this.HidP_ErrMsg(r)
 					}
 					Loop % UsageLength {
 						if (A_Index > 1){
@@ -487,27 +487,45 @@ class CHID extends _CHID_Base {
 			if (this.HIDP_CAPS.NumberInputValueCaps){
 				;static value := StaticSetCapacity(value, 4)
 				VarSetCapacity(value, A_PtrSize)
+				hat_count := 0
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
 					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
-					r := DllCall("Hid\HidP_GetUsageValue", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
-					if (r < 0){
-						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call" - this.HidP_ErrMsg(r)
-					}
+					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
+						; hat switch
+						if (!hat_count){
+							; first hat processed
+							UsageValueByteLength := 1024
+							VarSetCapacity(UsageValue, UsageValueByteLength)
+							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
+							r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+							OutputDebug % "lc: " this.HIDP_VALUE_CAPS[A_Index].LinkCollection
+							if (r < 0){
+								OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
+							}
+						}
+						hat_count++
+					} else {
+						r := DllCall("Hid\HidP_GetUsageValue", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+						if (r < 0){
+							OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
+						}
 
-					value := NumGet(value,0,"Uint")
-					axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
+						value := NumGet(value,0,"Uint")
+						axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
+					}
 
 				}
 				
+
 				/*
 				UsageValueByteLength := 1024
 				VarSetCapacity(UsageValue, UsageValueByteLength)
 				r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Usage, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call" - this.HidP_ErrMsg(r)
+					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
 				}
 				*/
 				;ToolTip % "ret: " r
