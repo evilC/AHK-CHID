@@ -468,7 +468,7 @@ class CHID extends _CHID_Base {
 					
 					VarSetCapacity(UsageList, 256)
 					
-					r := DllCall("Hid\HidP_GetUsages", "uint", 0, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+					r := DllCall("Hid\HidP_GetUsages", "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection, "Ptr", &UsageList, "Uint*", UsageLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 					if (r < 0){
 						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call - " this.HidP_ErrMsg(r)
 					}
@@ -500,7 +500,7 @@ class CHID extends _CHID_Base {
 							UsageValueByteLength := 1024
 							VarSetCapacity(UsageValue, UsageValueByteLength)
 							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+							r := DllCall("Hid\HidP_GetUsageValueArray", "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 							OutputDebug % "lc: " this.HIDP_VALUE_CAPS[A_Index].LinkCollection
 							if (r < 0){
 								OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
@@ -508,7 +508,7 @@ class CHID extends _CHID_Base {
 						}
 						hat_count++
 					} else {
-						r := DllCall("Hid\HidP_GetUsageValue", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
+						r := DllCall("Hid\HidP_GetUsageValue", "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin, "Ptr", &value, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
 						if (r < 0){
 							OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
 						}
