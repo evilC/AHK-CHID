@@ -1,4 +1,4 @@
-; REQUIRES FUCNTION BINDING AHK TEST BUILD >= v1.1.19.03-37+gd7b054a from HERE: http://ahkscript.org/boards/viewtopic.php?f=24&t=5802
+; REQUIRES AHK >= v1.1.20.00
 
 #include CHID.ahk
 
