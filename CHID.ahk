@@ -19,86 +19,6 @@ ToDo:
 * Clean up debug / Button+Axis state class properties (eg AxisDebug)
 */
 
-; REQUIRES AHK >= v1.1.20.00
-
-;#include CHID.ahk
-
-#singleinstance force
-SetBatchLines -1
-OutputDebug, DBGVIEWCLEAR
-
-jt := new JoystickTester()
-return
-
-class JoystickTester extends CHID {
-	GUI_WIDTH := 661
-	
-	__New(){
-		base.__New()
-		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
-		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|GUID|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
-		this.hLV := hLV
-		LV_Modifycol(1,50)
-		LV_Modifycol(2,40)
-		LV_Modifycol(3,130)
-		LV_Modifycol(4,40)
-		LV_Modifycol(5,140)
-		LV_Modifycol(6,50)
-		LV_Modifycol(7,50)
-		LV_Modifycol(8,50)
-		LV_Modifycol(9,50)
-		LV_Modifycol(10,50)
-		
-		Gui, Add, Text, % "hwndhAxes w300 h200 xm Section"
-		this.hAxes := hAxes
-		Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
-		this.hButtons := hButtons
-		
-		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
-		Gui, Add, Text, % "hwndhProcessTime w50 ys"
-		this.hProcessTime := hProcessTime
-		Gui, Show, y0, CHID Joystick Tester
-		fn := this.DeviceSelected.Bind(this)
-		
-		GuiControl +g, % this.hLV, % fn
-		
-		for handle, device in this.DevicesByHandle {
-			if (!device.NumButtons && !device.NumAxes){
-				; Ignore devices with no buttons or axes
-				continue
-			}
-			LV_Add(, handle, device.GUID, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
-		}
-	}
-	
-	DeviceSelected(){
-		static LastSelected := -1
-		; Listviews fire g-labels on down event and up event of click, filter out up event
-		LV_GetText(handle, LV_GetNext())
-		if (A_GuiEvent = "i"){
-			;this.RegisterDevice(this.DevicesByHandle[handle])
-			fn := this.DeviceChanged.Bind(this)
-			this.DevicesByHandle[handle].RegisterCallback(fn)
-		}
-		return 1
-	}
-	
-	; A subscribed device changed
-	DeviceChanged(device){
-		LV_GetText(handle, LV_GetNext())
-		if (device.handle = handle){
-			; Device is the one currently selected in the LV
-			GuiControl, , % this.hButtons, % device.btnstring
-			GuiControl, , % this.hAxes, % device.AxisDebug
-			GuiControl, , % this.hProcessTime, % device._ProcessTime
-		}
-	}
-}
-
-Esc::
-GuiClose:
-	ExitApp
-
 class CHID extends _CHID_Base {
 	NumDevices := 0						; The Number of current devices
 	_RAWINPUTDEVICELIST := []			; Array of RAWINPUTDEVICELIST objects
@@ -285,10 +205,8 @@ class CHID extends _CHID_Base {
 			}
 			this.RID_DEVICE_INFO := Data
 			
-			VID := Format("{:04x}", Data.hid.dwVendorID)
-			PID := Format("{:04x}",Data.hid.dwProductID)
-			StringUpper,VID, VID
-			StringUpper,PID, PID
+			VID := Format("{:04X}", Data.hid.dwVendorID)
+			PID := Format("{:04X}",Data.hid.dwProductID)
 			
 			this.VID := VID
 			this.PID := PID
@@ -366,7 +284,7 @@ class CHID extends _CHID_Base {
 			
 			if (this.HIDP_CAPS.NumberInputButtonCaps) {
 				VarSetCapacity(ButtonCaps, (72 * this.HIDP_CAPS.NumberInputButtonCaps))
-				r := DllCall("Hid\HidP_GetButtonCaps", "UInt", 0, "Ptr", &ButtonCaps, "UShort*", this.HIDP_CAPS.NumberInputButtonCaps, "Ptr", &PreparsedData)
+				r := DllCall("Hid\HidP_GetButtonCaps", "UInt", this.HidP_Input, "Ptr", &ButtonCaps, "UShort*", this.HIDP_CAPS.NumberInputButtonCaps, "Ptr", &PreparsedData)
 				if (r < 0){
 					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetButtonCaps DLL call - " this.HidP_ErrMsg(r)
 				}
@@ -432,7 +350,7 @@ class CHID extends _CHID_Base {
 			if (this.HIDP_CAPS.NumberInputValueCaps) {
 				;ValueCaps := StructSetHIDP_VALUE_CAPS(ValueCaps, this.HIDP_CAPS.NumberInputValueCaps)
 				VarSetCapacity(ValueCaps, (72 * this.HIDP_CAPS.NumberInputValueCaps))
-				r := DllCall("Hid\HidP_GetValueCaps", "UInt", 0, "Ptr", &ValueCaps, "UShort*", this.HIDP_CAPS.NumberInputValueCaps, "Ptr", &PreparsedData)
+				r := DllCall("Hid\HidP_GetValueCaps", "UInt", this.HidP_Input, "Ptr", &ValueCaps, "UShort*", this.HIDP_CAPS.NumberInputValueCaps, "Ptr", &PreparsedData)
 				if (r < 0){
 					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetValueCaps DLL call - " this.HidP_ErrMsg(r)
 				}
@@ -550,7 +468,7 @@ class CHID extends _CHID_Base {
 					
 					r := DllCall("Hid\HidP_GetUsages"
 						;, "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID
-						, "uint", 0		; vJoy seems to always be 1, we need it to be 0
+						, "uint", this.HidP_Input		; vJoy seems to always be 1, we need it to be 0
 						, "ushort", this.HIDP_BUTTON_CAPS[A_Index].UsagePage
 						, "ushort", this.HIDP_BUTTON_CAPS[A_Index].LinkCollection
 						, "Ptr", &UsageList
@@ -574,7 +492,6 @@ class CHID extends _CHID_Base {
 			axisstring:= "Axes:`n`n"
 			; Decode Axis States
 			if (this.HIDP_CAPS.NumberInputValueCaps){
-				;static value := StaticSetCapacity(value, 4)
 				VarSetCapacity(value, A_PtrSize)
 				hat_count := 0
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
@@ -582,26 +499,21 @@ class CHID extends _CHID_Base {
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
+					/*
 					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
 						; hat switch
 						if (!hat_count){
 							; first hat processed
-							UsageValueByteLength := 4
+							UsageValueByteLength := 8
 							VarSetCapacity(UsageValue, UsageValueByteLength)
-							NumPut(UsageValue,0,0x39, "uchar")
-							NumPut(UsageValue,1,0x39, "uchar")
-							NumPut(UsageValue,2,0x39, "uchar")
-							NumPut(UsageValue,3,0x39, "uchar")
 							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
 							r := DllCall("Hid\HidP_GetUsageValueArray"
 								;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-								, "uint", 0
+								, "uint", this.HidP_Input	; vJoy seems to have a value of 1, so hard-code 0
 								, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
 								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
 								, "ushort", 0
-								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
 								, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-								;, "Ptr", &UsageValue
 								, "Ptr", &UsageValue
 								, "Ushort", UsageValueByteLength
 								, "Ptr", &PreparsedData
@@ -614,10 +526,11 @@ class CHID extends _CHID_Base {
 						}
 						hat_count++
 					} else {
+					*/
 						OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
 						r := DllCall("Hid\HidP_GetUsageValue"
 							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-							, "uint", 0		; vjoy has a ReportID of 1 - bug?
+							, "uint", this.HidP_Input		; vjoy has a ReportID of 1 - bug?
 							, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
 							, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
 							, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
@@ -631,20 +544,8 @@ class CHID extends _CHID_Base {
 
 						value := NumGet(value,0,"Uint")
 						axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
-					}
-
+					;}
 				}
-				
-
-				/*
-				UsageValueByteLength := 1024
-				VarSetCapacity(UsageValue, UsageValueByteLength)
-				r := DllCall("Hid\HidP_GetUsageValueArray", "uint", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage, "ushort", 0, "ushort", this.HIDP_VALUE_CAPS[A_Index].Usage, "Ptr", &UsageValue, "Ushort", UsageValueByteLength, "Ptr", &PreparsedData, "Ptr", bRawData, "Uint", dwSizeHid)
-				if (r < 0){
-					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
-				}
-				*/
-				;ToolTip % "ret: " r
 			}
 			this.AxisDebug := AxisString
 		}
@@ -657,6 +558,7 @@ class _CHID_Base {
 	static RIM_TYPEMOUSE := 0, RIM_TYPEKEYBOARD := 1, RIM_TYPEHID := 2
     static RIDI_DEVICENAME := 0x20000007, RIDI_DEVICEINFO := 0x2000000b, RIDI_PREPARSEDDATA := 0x20000005
 	static RID_HEADER := 0x10000005, RID_INPUT := 0x10000003
+	static HidP_Input := 0, HidP_Output := 1, HidP_Feature := 2
 	static RIDEV_APPKEYS := 0x00000400, RIDEV_CAPTUREMOUSE := 0x00000200, RIDEV_DEVNOTIFY := 0x00002000, RIDEV_EXCLUDE := 0x00000010, RIDEV_EXINPUTSINK := 0x00001000, RIDEV_INPUTSINK := 0x00000100, RIDEV_NOHOTKEYS := 0x00000200, RIDEV_NOLEGACY := 0x00000030, RIDEV_PAGEONLY := 0x00000020, RIDEV_REMOVE := 0x00000001
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_NOT_VALUE_ARRAY := -1072627701,HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
