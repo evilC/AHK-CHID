@@ -51,8 +51,26 @@ class JoystickTester extends CHID {
 		
 		Gui, Add, Text, % "hwndhAxes w300 h200 xm Section"
 		this.hAxes := hAxes
-		Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
-		this.hButtons := hButtons
+		Gui, Add, GroupBox, % "x170 y180 w" this.GUI_WIDTH - 170 " h220", Button states
+		;Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
+		;this.hButtons := hButtons
+		Left := 175
+		Top := 200
+		rows := 8
+		cols := 16
+		item_Width := 30
+		item_height := 25
+		this.GuiButtonStates := []
+		Loop % rows {
+			row := A_Index - 1
+			btn := (row * cols) + 1
+			Loop % cols {
+				col := A_Index - 1
+				Gui, Add, Text, % "x" Left + (col * item_width) " y" Top + (row * item_height) " w" item_width " center hwndhwnd", % Btn
+				this.GuiButtonStates[btn] := hwnd
+				btn++
+			}
+		}
 		
 		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
 		Gui, Add, Text, % "hwndhProcessTime w50 ys"
@@ -101,7 +119,15 @@ class JoystickTester extends CHID {
 		if (device.handle = handle){
 			Loop % device.ButtonDelta.MaxIndex(){
 				ToolTip % device.ButtonDelta[A_Index].button " : " device.ButtonDelta[A_Index].state
+				if (device.ButtonDelta[A_Index].state){
+					col := "+cred"
+				} else {
+					col := "+cblack"
+				}
+				GuiControl, % col, % this.GuiButtonStates[device.ButtonDelta[A_Index].button]
+				GuiControl, , % this.GuiButtonStates[device.ButtonDelta[A_Index].button], % device.ButtonDelta[A_Index].button
 			}
+			
 			GuiControl, , % this.hProcessTime, % device._ProcessTime
 		}
 	}
