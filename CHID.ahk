@@ -477,21 +477,19 @@ class CHID extends _CHID_Base {
 							DataIndexMin: NumGet(ValueCaps, b + 68, "UShort")
 							DataIndexMax: NumGet(ValueCaps, b + 70, "UShort")
 						)}
-					/*	
-					} else {
+					;} else {
 						this.HIDP_VALUE_CAPS[A_Index].NotRange := {
 						(Join,
-							Usage: NumGet(ValueCaps, 56, "UShort")
-							Reserved1: NumGet(ValueCaps, 58, "UShort")
-							StringIndex: NumGet(ValueCaps, 60, "UShort")
-							Reserved2: NumGet(ValueCaps, 62, "UShort")
-							DesignatorIndex: NumGet(ValueCaps, 64, "UShort")
-							Reserved3: NumGet(ValueCaps, 66, "UShort")
-							DataIndex: NumGet(ValueCaps, 68, "UShort")
-							Reserved4: NumGet(ValueCaps, 70, "UShort")
+							Usage: NumGet(ValueCaps, b + 56, "UShort")
+							Reserved1: NumGet(ValueCaps, b + 58, "UShort")
+							StringIndex: NumGet(ValueCaps, b + 60, "UShort")
+							Reserved2: NumGet(ValueCaps, b + 62, "UShort")
+							DesignatorIndex: NumGet(ValueCaps, b + 64, "UShort")
+							Reserved3: NumGet(ValueCaps, b + 66, "UShort")
+							DataIndex: NumGet(ValueCaps, b + 68, "UShort")
+							Reserved4: NumGet(ValueCaps, b + 70, "UShort")
 						)}
-					}
-					*/
+					;}
 				}
 				
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
@@ -523,6 +521,9 @@ class CHID extends _CHID_Base {
 
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
+			static MAX_BUTTONS := 128
+			static UsageListSize := MAX_BUTTONS * 2
+			
 			if (this.ppSize = 0){
 				; Shouldn't really happen as ppSize should be set when the device initializes
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
@@ -544,7 +545,9 @@ class CHID extends _CHID_Base {
 					btns := (Range:=this.HIDP_BUTTON_CAPS[A_Index].Range).UsageMax - Range.UsageMin + 1
 					UsageLength := btns
 					
-					VarSetCapacity(UsageList, 256)
+					VarSetCapacity(UsageList, UsageListSize)
+					;VarSetCapacity(LastUsageList, UsageListSize)
+					static LastUsageList,init:= VarSetCapacity(LastUsageList, UsageListSize)
 					
 					r := DllCall("Hid\HidP_GetUsages"
 						;, "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID
@@ -565,6 +568,44 @@ class CHID extends _CHID_Base {
 						}
 						btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
 					}
+					VarSetCapacity(BreakUsageList, UsageListSize)
+					VarSetCapacity(MakeUsageList, UsageListSize)
+					r := DllCall("Hid\HidP_UsageListDifference"
+						, "Ptr", &LastUsageList
+						, "Ptr", &UsageList
+						, "Ptr", &BreakUsageList
+						, "Ptr", &MakeUsageList
+						, "uint", MAX_BUTTONS)
+					if (r < 0){
+						OutputDebug % A_ThisFunc " Error (" r ") in HidP_UsageListDifference DLL call - " this.HidP_ErrMsg(r)
+					}
+					makestring := ""
+					breakstring := ""
+					Loop % MAX_BUTTONS {
+						if (A_Index > 1){
+							;btnstring .= ", "
+						}
+						make_done := 0
+						break_done := 0
+						make := NumGet(MakeUsageList,(A_Index -1) * 2, "Ushort")
+						break := NumGet(BreakUsageList,(A_Index -1) * 2, "Ushort")
+						;MsgBox % make
+						if (make){
+							makestring .= make
+						} else {
+							make_done := 1
+						}
+						if (break){
+							breakstring .= break
+						} else {
+							break_done := 1
+						}
+						if (make_done && break_done){
+							break
+						}
+						ToolTip % "MakeString: " makestring "`nBreakString: " breakstring
+					}
+					DllCall("RtlMoveMemory", "ptr", &LastUsageList, "ptr", &UsageList, "uint", UsageListSize)
 				}
 			}
 			this.btnstring := btnstring
@@ -607,7 +648,7 @@ class CHID extends _CHID_Base {
 						hat_count++
 					} else {
 					*/
-						OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
+						;OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
 						r := DllCall("Hid\HidP_GetUsageValue"
 							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
 							, "uint", this.HidP_Input		; vjoy has a ReportID of 1 - bug?
