@@ -14,9 +14,7 @@ ToDo:
 * Solve why HIDP_VALUE_CAPS.IsRange is always 0. Or is that not the indicator for which union to use?
 * Better way of getting human-readable name?. HidD_GetProductString?
 * Get all axis values in one DLL call using HidP_GetUsageValueArray
-* Get change in button states using HidP_UsageListDifference
 * Calculate calibrated values? HidP_GetScaledUsageValue?
-* Clean up debug / Button+Axis state class properties (eg AxisDebug)
 */
 
 ; REQUIRES AHK >= v1.1.20.00
@@ -49,16 +47,56 @@ class JoystickTester extends CHID {
 		LV_Modifycol(9,50)
 		LV_Modifycol(10,50)
 		
-		Gui, Add, Text, % "hwndhAxes w300 h200 xm Section"
-		this.hAxes := hAxes
-		Gui, Add, GroupBox, % "x170 y180 w" this.GUI_WIDTH - 170 " h220", Button states
-		;Gui, Add, Text, % "hwndhButtons w300 h200 x331 ys"
-		;this.hButtons := hButtons
-		Left := 175
+		Gui, Add, GroupBox, % "x10 y180 w190 h115", Axis states
+		
 		Top := 200
+		Left := 12
+		rows := 4
+		cols := 2
+		label_width := 20
+		item_Width := 50
+		item_height := 25
+		col_width := 110
+		
+		this.GuiAxisStates := []
+		Loop % rows {
+			row := A_Index - 1
+			axis := (row * cols) + 1
+			Loop % cols {
+				col := A_Index -1
+				Gui, Add, Text, % "x" Left + (col * col_width) " y" Top + (row * item_height) " w" label_width " center hwndhwnd", % this.AxisNames[axis]
+				Gui, Add, Text, % "x" Left + (col * col_width) + label_width " y" Top + (row * item_height) " w" item_width " center hwndhwnd"
+				this.GuiAxisStates[axis] := hwnd
+				axis++
+			}
+		}
+
+		Gui, Add, GroupBox, % "x10 y300 w190 h100", Hat states
+		Top := 320
+		rows := 2
+		cols := 2
+		
+		this.GuiHatStates := []
+		Loop % rows {
+			row := A_Index - 1
+			hat := (row * cols) + 1
+			Loop % cols {
+				col := A_Index -1
+				Gui, Add, Text, % "x" Left + (col * col_width) " y" Top + (row * item_height) " w" label_width " center hwndhwnd", % hat ":"
+				Gui, Add, Text, % "x" Left + (col * col_width) + label_width " y" Top + (row * item_height) " w" item_width " center hwndhwnd"
+				this.GuiHatStates[hat] := hwnd
+				hat++
+			}
+		}
+		Gui, Add, Text, % "x" Left " y" Top + ((row+1) * item_height) " w180 center", (Currently only Hat 1 works)
+
+		Gui, Add, GroupBox, % "x208 y180 w" this.GUI_WIDTH - 200 " h220", Button states
+		
+		Top := 200
+		Left := 210
 		rows := 8
 		cols := 16
-		item_Width := 30
+		item_Width := 28
 		item_height := 25
 		this.GuiButtonStates := []
 		Loop % rows {
@@ -71,6 +109,9 @@ class JoystickTester extends CHID {
 				btn++
 			}
 		}
+		
+
+
 		
 		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
 		Gui, Add, Text, % "hwndhProcessTime w50 ys"
@@ -94,31 +135,30 @@ class JoystickTester extends CHID {
 		; Listviews fire g-labels on down event and up event of click, filter out up event
 		LV_GetText(handle, LV_GetNext())
 		if (A_GuiEvent = "i"){
-			;fn := this.DeviceChanged.Bind(this)
 			fn := this.AxisChanged.Bind(this)
 			this.DevicesByHandle[handle].RegisterAxisCallback(fn)
+			fn := this.HatChanged.Bind(this)
+			this.DevicesByHandle[handle].RegisterHatCallback(fn)
 			fn := this.ButtonChanged.Bind(this)
 			this.DevicesByHandle[handle].RegisterButtonCallback(fn)
+			
+			Loop 128 {
+				GuiControl, +cblack, % this.GuiButtonStates[A_Index]
+				GuiControl, , % this.GuiButtonStates[A_Index], % A_Index
+			}
+			Loop 8 {
+				GuiControl, , % this.GuiAxisStates[A_Index], % ""
+			}
 		}
 		return 1
 	}
 	
-	; A subscribed device changed
-	DeviceChanged(device){
-		LV_GetText(handle, LV_GetNext())
-		if (device.handle = handle){
-			; Device is the one currently selected in the LV
-			GuiControl, , % this.hButtons, % device.btnstring
-			GuiControl, , % this.hAxes, % device.AxisDebug
-			GuiControl, , % this.hProcessTime, % device._ProcessTime
-		}
-	}
-	
+	; The state of one or more buttons changed - walk the ButtonDelta array to see what changed.
 	ButtonChanged(device){
 		LV_GetText(handle, LV_GetNext())
 		if (device.handle = handle){
 			Loop % device.ButtonDelta.MaxIndex(){
-				ToolTip % device.ButtonDelta[A_Index].button " : " device.ButtonDelta[A_Index].state
+				; Update the GUI
 				if (device.ButtonDelta[A_Index].state){
 					col := "+cred"
 				} else {
@@ -127,15 +167,34 @@ class JoystickTester extends CHID {
 				GuiControl, % col, % this.GuiButtonStates[device.ButtonDelta[A_Index].button]
 				GuiControl, , % this.GuiButtonStates[device.ButtonDelta[A_Index].button], % device.ButtonDelta[A_Index].button
 			}
-			
+			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
+			GuiControl, , % this.hProcessTime, % device._ProcessTime
+		}
+	}
+
+	; The state of an Axis changed
+	AxisChanged(device){
+		LV_GetText(handle, LV_GetNext())
+		if (device.handle = handle){
+			Loop % device.AxisDelta.MaxIndex(){
+				; Update the GUI
+				GuiControl, , % this.GuiAxisStates[device.AxisDelta[A_Index].axis], % device.AxisDelta[A_Index].state
+			}
+			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
 			GuiControl, , % this.hProcessTime, % device._ProcessTime
 		}
 	}
 	
-	AxisChanged(device){
+	; The state of a Hat changed
+	HatChanged(device){
 		LV_GetText(handle, LV_GetNext())
 		if (device.handle = handle){
-			
+			Loop % device.HatDelta.MaxIndex(){
+				; Update the GUI
+				GuiControl, , % this.GuiHatStates[device.HatDelta[A_Index].hat], % device.HatDelta[A_Index].state
+			}
+			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
+			GuiControl, , % this.hProcessTime, % device._ProcessTime
 		}
 	}
 }
@@ -276,16 +335,10 @@ class CHID extends _CHID_Base {
 			}
 		}
 		device._ProcessTime := QPX(false)
-		
-		/*
-		; Fire callback for device, if registered
-		if (device._callback != 0){
-			(device._callback).(device)
-		}
-		*/
-
 	}
 	
+	; =============================================================================================
+	; Class to wrap a RawInput device.
 	class _CDevice extends _CHID_Base {
 		; Exposed properties
 		RID_DEVICE_INFO := {}	; An object containing the data from the RIDI_DEVICEINFO GetRawInputDeviceInfo call
@@ -300,8 +353,11 @@ class CHID extends _CHID_Base {
 		HumanName := ""			; A Human-readable name (May not be unique)
 		Type := -1 				; Should be RIM_TYPEHID
 		ButtonStates := []		; An array of button states
-		ButtonDelta := []		; An array of the buttons that just got pressed or released
+		ButtonDelta := []		; An array of objects detailing the buttons that just got pressed or released
 		AxisStates := []		; An array of Axis States
+		AxisDelta := []			; An array of objects detailing the axes that just changed
+		HatStates := []			; An array of Hat States
+		HatDelta := []			; An array of objects detailing the hats that just changed
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
@@ -582,6 +638,11 @@ class CHID extends _CHID_Base {
 			this._AxisCallback := func
 		}
 
+		RegisterHatCallback(func){
+			this._parent.RegisterDevice(this)
+			this._HatCallback := func
+		}
+
 		RegisterButtonCallback(func){
 			this._parent.RegisterDevice(this)
 			this._ButtonCallback := func
@@ -669,7 +730,6 @@ class CHID extends _CHID_Base {
 						if (make_done && break_done){
 							break
 						}
-						ToolTip % "MakeString: " makestring "`nBreakString: " breakstring
 					}
 					; Save UsageList for next time, so we can compare.
 					DllCall("RtlMoveMemory", "ptr", &LastUsageList, "ptr", &UsageList, "uint", UsageListSize)
@@ -680,16 +740,18 @@ class CHID extends _CHID_Base {
 				(this._ButtonCallback).(this)
 			}
 
-			axisstring:= "Axes:`n`n"
 			; Decode Axis States
 			if (this.HIDP_CAPS.NumberInputValueCaps){
 				VarSetCapacity(value, A_PtrSize)
 				hat_count := 0
+				this.AxisDelta := []
+				this.HatDelta := []
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
 					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
+					AxisIndex := this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin - 0x2F
 					/*
 					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
 						; hat switch
@@ -734,11 +796,27 @@ class CHID extends _CHID_Base {
 						}
 
 						value := NumGet(value,0,"Uint")
-						axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
+						if (AxisIndex = 10){
+							if (this.HatStates[1] != value && !hat_count){
+								this.HatStates[1] := value
+								this.HatDelta.Insert({hat: 1, state: value})
+							}
+							hat_count++
+						}
+						if (this.AxisStates[AxisIndex] != value){
+							this.AxisStates[AxisIndex] := value
+							this.AxisDelta.Insert({axis: AxisIndex, state: value})
+						}
 					;}
 				}
+				if (this._AxisCallback != 0 && this.AxisDelta.MaxIndex()){
+					(this._AxisCallback).(this)
+				}
+				if (this._HatCallback != 0 && this.HatDelta.MaxIndex()){
+					(this._HatCallback).(this)
+				}
+
 			}
-			this.AxisDebug := AxisString
 		}
 	}
 	
