@@ -58,8 +58,8 @@ class JoystickTester extends CHID {
 		Gui, Add, Text, % "hwndhProcessTime w50 ys"
 		this.hProcessTime := hProcessTime
 		Gui, Show, y0, CHID Joystick Tester
-		fn := this.DeviceSelected.Bind(this)
 		
+		fn := this.DeviceSelected.Bind(this)
 		GuiControl +g, % this.hLV, % fn
 		
 		for handle, device in this.DevicesByHandle {
@@ -76,9 +76,11 @@ class JoystickTester extends CHID {
 		; Listviews fire g-labels on down event and up event of click, filter out up event
 		LV_GetText(handle, LV_GetNext())
 		if (A_GuiEvent = "i"){
-			;this.RegisterDevice(this.DevicesByHandle[handle])
-			fn := this.DeviceChanged.Bind(this)
-			this.DevicesByHandle[handle].RegisterCallback(fn)
+			;fn := this.DeviceChanged.Bind(this)
+			fn := this.AxisChanged.Bind(this)
+			this.DevicesByHandle[handle].RegisterAxisCallback(fn)
+			fn := this.ButtonChanged.Bind(this)
+			this.DevicesByHandle[handle].RegisterButtonCallback(fn)
 		}
 		return 1
 	}
@@ -91,6 +93,23 @@ class JoystickTester extends CHID {
 			GuiControl, , % this.hButtons, % device.btnstring
 			GuiControl, , % this.hAxes, % device.AxisDebug
 			GuiControl, , % this.hProcessTime, % device._ProcessTime
+		}
+	}
+	
+	ButtonChanged(device){
+		LV_GetText(handle, LV_GetNext())
+		if (device.handle = handle){
+			Loop % device.ButtonDelta.MaxIndex(){
+				ToolTip % device.ButtonDelta[A_Index].button " : " device.ButtonDelta[A_Index].state
+			}
+			GuiControl, , % this.hProcessTime, % device._ProcessTime
+		}
+	}
+	
+	AxisChanged(device){
+		LV_GetText(handle, LV_GetNext())
+		if (device.handle = handle){
+			
 		}
 	}
 }
@@ -232,10 +251,12 @@ class CHID extends _CHID_Base {
 		}
 		device._ProcessTime := QPX(false)
 		
+		/*
 		; Fire callback for device, if registered
 		if (device._callback != 0){
 			(device._callback).(device)
 		}
+		*/
 
 	}
 	
@@ -252,10 +273,15 @@ class CHID extends _CHID_Base {
 		NumPOVs := 0			; The number of POV hats
 		HumanName := ""			; A Human-readable name (May not be unique)
 		Type := -1 				; Should be RIM_TYPEHID
+		ButtonStates := []		; An array of button states
+		ButtonDelta := []		; An array of the buttons that just got pressed or released
+		AxisStates := []		; An array of Axis States
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
-		ppSize := 0		; Holds the size of the preparsed data, so we do not have to re-get it.
+		_ButtonCallback := 0	; Function to be called when a Button on this device changes
+		_AxisCallback := 0		; Function to be called when an Axis on this device changes
+		ppSize := 0				; Holds the size of the preparsed data, so we do not have to re-get it.
 
 		__New(parent, RAWINPUTDEVICELIST){
 			static DevSize := 32
@@ -425,6 +451,13 @@ class CHID extends _CHID_Base {
 			}
 			
 			this.NumButtons := btns
+			; Initialize button state array
+			; ToDo: Get actual data to initialize state of buttons?
+			; eg if a user has a stick like the saitek X45 which has slider switches that hold buttons constantly...
+			; ... when starting to read the stick, these switches would generate a "down" event, even though the state did not change.
+			Loop % this.NumButtons {
+				this.ButtonStates[A_Index] := 0
+			}
 
 			; Axes / Hats
 			if (this.HIDP_CAPS.NumberInputValueCaps) {
@@ -518,6 +551,16 @@ class CHID extends _CHID_Base {
 			this._callback := func
 		}
 
+		RegisterAxisCallback(func){
+			this._parent.RegisterDevice(this)
+			this._AxisCallback := func
+		}
+
+		RegisterButtonCallback(func){
+			this._parent.RegisterDevice(this)
+			this._ButtonCallback := func
+		}
+
 
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
@@ -562,12 +605,8 @@ class CHID extends _CHID_Base {
 					if (r < 0){
 						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call - " this.HidP_ErrMsg(r)
 					}
-					Loop % UsageLength {
-						if (A_Index > 1){
-							btnstring .= ", "
-						}
-						btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
-					}
+					
+					; Compare UsageList to last time to obtain button delta.
 					VarSetCapacity(BreakUsageList, UsageListSize)
 					VarSetCapacity(MakeUsageList, UsageListSize)
 					r := DllCall("Hid\HidP_UsageListDifference"
@@ -581,22 +620,23 @@ class CHID extends _CHID_Base {
 					}
 					makestring := ""
 					breakstring := ""
+					this.ButtonDelta := []
 					Loop % MAX_BUTTONS {
-						if (A_Index > 1){
-							;btnstring .= ", "
-						}
 						make_done := 0
 						break_done := 0
-						make := NumGet(MakeUsageList,(A_Index -1) * 2, "Ushort")
-						break := NumGet(BreakUsageList,(A_Index -1) * 2, "Ushort")
-						;MsgBox % make
-						if (make){
-							makestring .= make
+						m := NumGet(MakeUsageList,(A_Index -1) * 2, "Ushort")
+						b := NumGet(BreakUsageList,(A_Index -1) * 2, "Ushort")
+						if (m){
+							makestring .= m
+							this.ButtonStates[m] := 1
+							this.ButtonDelta.Insert({button: m, state: 1})
 						} else {
 							make_done := 1
 						}
-						if (break){
-							breakstring .= break
+						if (b){
+							breakstring .= b
+							this.ButtonStates[b] := 0
+							this.ButtonDelta.Insert({button: b, state: 0})
 						} else {
 							break_done := 1
 						}
@@ -605,10 +645,14 @@ class CHID extends _CHID_Base {
 						}
 						ToolTip % "MakeString: " makestring "`nBreakString: " breakstring
 					}
+					; Save UsageList for next time, so we can compare.
 					DllCall("RtlMoveMemory", "ptr", &LastUsageList, "ptr", &UsageList, "uint", UsageListSize)
 				}
 			}
-			this.btnstring := btnstring
+			; Fire Button Callback if anything changed
+			if (this._ButtonCallback != 0 && this.ButtonDelta.MaxIndex()){
+				(this._ButtonCallback).(this)
+			}
 
 			axisstring:= "Axes:`n`n"
 			; Decode Axis States
