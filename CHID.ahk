@@ -13,10 +13,8 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 ToDo:
 * Solve why HIDP_VALUE_CAPS.IsRange is always 0. Or is that not the indicator for which union to use?
 * Better way of getting human-readable name?. HidD_GetProductString?
-* Get all axis values in one DLL call using HidP_GetUsageValueArray
-* Get change in button states using HidP_UsageListDifference
+* Implement reading of hats 2-4. HidP_GetUsageValueArray?
 * Calculate calibrated values? HidP_GetScaledUsageValue?
-* Clean up debug / Button+Axis state class properties (eg AxisDebug)
 */
 
 class CHID extends _CHID_Base {
@@ -151,14 +149,10 @@ class CHID extends _CHID_Base {
 			}
 		}
 		device._ProcessTime := QPX(false)
-		
-		; Fire callback for device, if registered
-		if (device._callback != 0){
-			(device._callback).(device)
-		}
-
 	}
 	
+	; =============================================================================================
+	; Class to wrap a RawInput device.
 	class _CDevice extends _CHID_Base {
 		; Exposed properties
 		RID_DEVICE_INFO := {}	; An object containing the data from the RIDI_DEVICEINFO GetRawInputDeviceInfo call
@@ -172,10 +166,18 @@ class CHID extends _CHID_Base {
 		NumPOVs := 0			; The number of POV hats
 		HumanName := ""			; A Human-readable name (May not be unique)
 		Type := -1 				; Should be RIM_TYPEHID
+		ButtonStates := []		; An array of button states
+		ButtonDelta := []		; An array of objects detailing the buttons that just got pressed or released
+		AxisStates := []		; An array of Axis States
+		AxisDelta := []			; An array of objects detailing the axes that just changed
+		HatStates := []			; An array of Hat States
+		HatDelta := []			; An array of objects detailing the hats that just changed
 		
 		; private properties
 		_callback := 0			; Function to be called when this device changes
-		ppSize := 0		; Holds the size of the preparsed data, so we do not have to re-get it.
+		_ButtonCallback := 0	; Function to be called when a Button on this device changes
+		_AxisCallback := 0		; Function to be called when an Axis on this device changes
+		ppSize := 0				; Holds the size of the preparsed data, so we do not have to re-get it.
 
 		__New(parent, RAWINPUTDEVICELIST){
 			static DevSize := 32
@@ -345,6 +347,13 @@ class CHID extends _CHID_Base {
 			}
 			
 			this.NumButtons := btns
+			; Initialize button state array
+			; ToDo: Get actual data to initialize state of buttons?
+			; eg if a user has a stick like the saitek X45 which has slider switches that hold buttons constantly...
+			; ... when starting to read the stick, these switches would generate a "down" event, even though the state did not change.
+			Loop % this.NumButtons {
+				this.ButtonStates[A_Index] := 0
+			}
 
 			; Axes / Hats
 			if (this.HIDP_CAPS.NumberInputValueCaps) {
@@ -397,21 +406,19 @@ class CHID extends _CHID_Base {
 							DataIndexMin: NumGet(ValueCaps, b + 68, "UShort")
 							DataIndexMax: NumGet(ValueCaps, b + 70, "UShort")
 						)}
-					/*	
-					} else {
+					;} else {
 						this.HIDP_VALUE_CAPS[A_Index].NotRange := {
 						(Join,
-							Usage: NumGet(ValueCaps, 56, "UShort")
-							Reserved1: NumGet(ValueCaps, 58, "UShort")
-							StringIndex: NumGet(ValueCaps, 60, "UShort")
-							Reserved2: NumGet(ValueCaps, 62, "UShort")
-							DesignatorIndex: NumGet(ValueCaps, 64, "UShort")
-							Reserved3: NumGet(ValueCaps, 66, "UShort")
-							DataIndex: NumGet(ValueCaps, 68, "UShort")
-							Reserved4: NumGet(ValueCaps, 70, "UShort")
+							Usage: NumGet(ValueCaps, b + 56, "UShort")
+							Reserved1: NumGet(ValueCaps, b + 58, "UShort")
+							StringIndex: NumGet(ValueCaps, b + 60, "UShort")
+							Reserved2: NumGet(ValueCaps, b + 62, "UShort")
+							DesignatorIndex: NumGet(ValueCaps, b + 64, "UShort")
+							Reserved3: NumGet(ValueCaps, b + 66, "UShort")
+							DataIndex: NumGet(ValueCaps, b + 68, "UShort")
+							Reserved4: NumGet(ValueCaps, b + 70, "UShort")
 						)}
-					}
-					*/
+					;}
 				}
 				
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
@@ -440,9 +447,27 @@ class CHID extends _CHID_Base {
 			this._callback := func
 		}
 
+		RegisterAxisCallback(func){
+			this._parent.RegisterDevice(this)
+			this._AxisCallback := func
+		}
+
+		RegisterHatCallback(func){
+			this._parent.RegisterDevice(this)
+			this._HatCallback := func
+		}
+
+		RegisterButtonCallback(func){
+			this._parent.RegisterDevice(this)
+			this._ButtonCallback := func
+		}
+
 
 		; Called when this device received a WM_INPUT message
 		GetPreparsedData(bRawData, dwSizeHid){
+			static MAX_BUTTONS := 128
+			static UsageListSize := MAX_BUTTONS * 2
+			
 			if (this.ppSize = 0){
 				; Shouldn't really happen as ppSize should be set when the device initializes
 				r := DllCall("GetRawInputDeviceInfo", "Ptr", this.handle, "UInt", this.RIDI_PREPARSEDDATA, "Ptr", 0, "UInt*", ppSize)
@@ -464,7 +489,9 @@ class CHID extends _CHID_Base {
 					btns := (Range:=this.HIDP_BUTTON_CAPS[A_Index].Range).UsageMax - Range.UsageMin + 1
 					UsageLength := btns
 					
-					VarSetCapacity(UsageList, 256)
+					VarSetCapacity(UsageList, UsageListSize)
+					;VarSetCapacity(LastUsageList, UsageListSize)
+					static LastUsageList,init:= VarSetCapacity(LastUsageList, UsageListSize)
 					
 					r := DllCall("Hid\HidP_GetUsages"
 						;, "uint", this.HIDP_BUTTON_CAPS[A_Index].ReportID
@@ -479,26 +506,66 @@ class CHID extends _CHID_Base {
 					if (r < 0){
 						OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsages DLL call - " this.HidP_ErrMsg(r)
 					}
-					Loop % UsageLength {
-						if (A_Index > 1){
-							btnstring .= ", "
-						}
-						btnstring .= NumGet(UsageList,(A_Index -1) * 2, "Ushort")
+					
+					; Compare UsageList to last time to obtain button delta.
+					VarSetCapacity(BreakUsageList, UsageListSize)
+					VarSetCapacity(MakeUsageList, UsageListSize)
+					r := DllCall("Hid\HidP_UsageListDifference"
+						, "Ptr", &LastUsageList
+						, "Ptr", &UsageList
+						, "Ptr", &BreakUsageList
+						, "Ptr", &MakeUsageList
+						, "uint", MAX_BUTTONS)
+					if (r < 0){
+						OutputDebug % A_ThisFunc " Error (" r ") in HidP_UsageListDifference DLL call - " this.HidP_ErrMsg(r)
 					}
+					makestring := ""
+					breakstring := ""
+					this.ButtonDelta := []
+					Loop % MAX_BUTTONS {
+						make_done := 0
+						break_done := 0
+						m := NumGet(MakeUsageList,(A_Index -1) * 2, "Ushort")
+						b := NumGet(BreakUsageList,(A_Index -1) * 2, "Ushort")
+						if (m){
+							makestring .= m
+							this.ButtonStates[m] := 1
+							this.ButtonDelta.Insert({button: m, state: 1})
+						} else {
+							make_done := 1
+						}
+						if (b){
+							breakstring .= b
+							this.ButtonStates[b] := 0
+							this.ButtonDelta.Insert({button: b, state: 0})
+						} else {
+							break_done := 1
+						}
+						if (make_done && break_done){
+							break
+						}
+					}
+					; Save UsageList for next time, so we can compare.
+					DllCall("RtlMoveMemory", "ptr", &LastUsageList, "ptr", &UsageList, "uint", UsageListSize)
 				}
 			}
-			this.btnstring := btnstring
+			; Fire Button Callback if anything changed
+			if (this._ButtonCallback != 0 && this.ButtonDelta.MaxIndex()){
+				(this._ButtonCallback).(this)
+			}
 
-			axisstring:= "Axes:`n`n"
 			; Decode Axis States
 			if (this.HIDP_CAPS.NumberInputValueCaps){
 				VarSetCapacity(value, A_PtrSize)
 				hat_count := 0
+				this.AxisDelta := []
+				this.HatDelta := []
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
 					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
 						; Ignore things not on the page we subscribed to.
 						continue
 					}
+					AxisIndex := this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin - 0x2F
 					/*
 					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
 						; hat switch
@@ -527,7 +594,7 @@ class CHID extends _CHID_Base {
 						hat_count++
 					} else {
 					*/
-						OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
+						;OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
 						r := DllCall("Hid\HidP_GetUsageValue"
 							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
 							, "uint", this.HidP_Input		; vjoy has a ReportID of 1 - bug?
@@ -543,11 +610,27 @@ class CHID extends _CHID_Base {
 						}
 
 						value := NumGet(value,0,"Uint")
-						axisstring .= this.AxisHexToName[this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin] " axis: " value "`n"
+						if (AxisIndex = 10){
+							if (this.HatStates[1] != value && !hat_count){
+								this.HatStates[1] := value
+								this.HatDelta.Insert({hat: 1, state: value})
+							}
+							hat_count++
+						}
+						if (this.AxisStates[AxisIndex] != value){
+							this.AxisStates[AxisIndex] := value
+							this.AxisDelta.Insert({axis: AxisIndex, state: value})
+						}
 					;}
 				}
+				if (this._AxisCallback != 0 && this.AxisDelta.MaxIndex()){
+					(this._AxisCallback).(this)
+				}
+				if (this._HatCallback != 0 && this.HatDelta.MaxIndex()){
+					(this._HatCallback).(this)
+				}
+
 			}
-			this.AxisDebug := AxisString
 		}
 	}
 	
