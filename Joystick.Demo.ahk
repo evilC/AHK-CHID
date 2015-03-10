@@ -69,7 +69,6 @@ class JoystickTester extends CHID {
 				hat++
 			}
 		}
-		Gui, Add, Text, % "x" Left " y" Top + ((row+1) * item_height) " w180 center", (Currently only Hat 1 works)
 
 		Gui, Add, GroupBox, % "x208 y180 w" this.GUI_WIDTH - 200 " h220", Button states
 		
@@ -129,6 +128,9 @@ class JoystickTester extends CHID {
 			}
 			Loop 8 {
 				GuiControl, , % this.GuiAxisStates[A_Index], % ""
+			}
+			Loop 4 {
+				GuiControl, , % this.GuiHatStates[A_Index], % ""
 			}
 		}
 		return 1

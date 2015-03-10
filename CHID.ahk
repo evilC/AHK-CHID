@@ -13,7 +13,6 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 ToDo:
 * Solve why HIDP_VALUE_CAPS.IsRange is always 0. Or is that not the indicator for which union to use?
 * Better way of getting human-readable name?. HidD_GetProductString?
-* Implement reading of hats 2-4. HidP_GetUsageValueArray?
 * Calculate calibrated values? HidP_GetScaledUsageValue?
 */
 
@@ -519,8 +518,6 @@ class CHID extends _CHID_Base {
 					if (r < 0){
 						OutputDebug % A_ThisFunc " Error (" r ") in HidP_UsageListDifference DLL call - " this.HidP_ErrMsg(r)
 					}
-					makestring := ""
-					breakstring := ""
 					this.ButtonDelta := []
 					Loop % MAX_BUTTONS {
 						make_done := 0
@@ -528,7 +525,6 @@ class CHID extends _CHID_Base {
 						m := NumGet(MakeUsageList,(A_Index -1) * 2, "Ushort")
 						b := NumGet(BreakUsageList,(A_Index -1) * 2, "Ushort")
 						if (m){
-							makestring .= m
 							this.ButtonStates[m] := 1
 							this.ButtonDelta.Insert({button: m, state: 1})
 						} else {
@@ -560,68 +556,45 @@ class CHID extends _CHID_Base {
 				hat_count := 0
 				this.AxisDelta := []
 				this.HatDelta := []
+				
+				VarSetCapacity(dList, 8 * 100)
+				dLength := 100
+				r := DllCall("Hid\HidP_GetData"
+					, "uint", this.HidP_Input
+					, "ptr", &dList
+					, "ptr", &dLength
+					, "ptr", &PreparsedData
+					, "Ptr", bRawData
+					, "Uint", dwSizeHid)
+				if (r < 0){
+					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
+				}
+				dLength := NumGet(dLength, 0 , "uint")
+				hat := 0
+				
+				; Build lookup array of values by DataIndex
+				Values := []
+				Loop % dLength {
+					b := ((A_Index - 1) * 8)
+					dIndex := NumGet(dList, b, "ushort")
+					Values[dIndex] := NumGet(dList, b + 4, "uint")
+				}
+				
+				; Find values for each axis
 				Loop % this.HIDP_CAPS.NumberInputValueCaps {
-					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
-						; Ignore things not on the page we subscribed to.
-						continue
-					}
-					AxisIndex := this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin - 0x2F
-					/*
+					; AxisIndex 1 is ALWAYS the X axis.
+					AxisIndex := this.HIDP_VALUE_CAPS[A_Index].NotRange.Usage - 0x2F
+					
+					value := Values[this.HIDP_VALUE_CAPS[A_Index].NotRange.DataIndex]
 					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
-						; hat switch
-						if (!hat_count){
-							; first hat processed
-							UsageValueByteLength := 8
-							VarSetCapacity(UsageValue, UsageValueByteLength)
-							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							r := DllCall("Hid\HidP_GetUsageValueArray"
-								;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-								, "uint", this.HidP_Input	; vJoy seems to have a value of 1, so hard-code 0
-								, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
-								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
-								, "ushort", 0
-								, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-								, "Ptr", &UsageValue
-								, "Ushort", UsageValueByteLength
-								, "Ptr", &PreparsedData
-								, "Ptr", bRawData
-								, "Uint", dwSizeHid)
-							OutputDebug % "el: " A_LastError
-							if (r < 0){
-								OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
-							}
-						}
-						hat_count++
-					} else {
-					*/
-						;OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
-						r := DllCall("Hid\HidP_GetUsageValue"
-							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-							, "uint", this.HidP_Input		; vjoy has a ReportID of 1 - bug?
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							, "Ptr", &value
-							, "Ptr", &PreparsedData
-							, "Ptr", bRawData
-							, "Uint", dwSizeHid)
-						if (r < 0){
-							OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
-						}
+						hat++
+						this.HatStates[hat] := value
+						this.HatDelta.Insert({hat: hat, state: value})
 
-						value := NumGet(value,0,"Uint")
-						if (AxisIndex = 10){
-							if (this.HatStates[1] != value && !hat_count){
-								this.HatStates[1] := value
-								this.HatDelta.Insert({hat: 1, state: value})
-							}
-							hat_count++
-						}
-						if (this.AxisStates[AxisIndex] != value){
-							this.AxisStates[AxisIndex] := value
-							this.AxisDelta.Insert({axis: AxisIndex, state: value})
-						}
-					;}
+					} else {
+						this.AxisStates[AxisIndex] := value
+						this.AxisDelta.Insert({axis: AxisIndex, state: value})
+					}
 				}
 				if (this._AxisCallback != 0 && this.AxisDelta.MaxIndex()){
 					(this._AxisCallback).(this)
@@ -646,7 +619,7 @@ class _CHID_Base {
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_NOT_VALUE_ARRAY := -1072627701,HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
+	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1","SL2","POV"]
 
 	HidP_ErrMsg(ErrNum){
 		if (ErrNum = "") {
