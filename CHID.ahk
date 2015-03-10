@@ -13,194 +13,8 @@ Lots of useful code samples: https://gitorious.org/bsnes/bsnes/source/ccfff86140
 ToDo:
 * Solve why HIDP_VALUE_CAPS.IsRange is always 0. Or is that not the indicator for which union to use?
 * Better way of getting human-readable name?. HidD_GetProductString?
-* Implement reading of hats 2-4. HidP_GetUsageValueArray?
 * Calculate calibrated values? HidP_GetScaledUsageValue?
 */
-
-; REQUIRES AHK >= v1.1.20.00
-
-;#include CHID.ahk
-
-#singleinstance force
-SetBatchLines -1
-OutputDebug, DBGVIEWCLEAR
-
-jt := new JoystickTester()
-return
-
-class JoystickTester extends CHID {
-	GUI_WIDTH := 661
-	
-	__New(){
-		base.__New()
-		Gui, Add, Text, % "xm Center w" this.GUI_WIDTH, % "Select a Joystick to subscribe to WM_INPUT messages for that UsagePage/Usage."
-		Gui, Add, Listview, % "hwndhLV w" this.GUI_WIDTH " h150 +AltSubmit +Grid",Handle|GUID|Name|Btns|Axes|POVs|VID|PID|UsPage|Usage
-		this.hLV := hLV
-		LV_Modifycol(1,50)
-		LV_Modifycol(2,40)
-		LV_Modifycol(3,130)
-		LV_Modifycol(4,40)
-		LV_Modifycol(5,140)
-		LV_Modifycol(6,50)
-		LV_Modifycol(7,50)
-		LV_Modifycol(8,50)
-		LV_Modifycol(9,50)
-		LV_Modifycol(10,50)
-		
-		Gui, Add, GroupBox, % "x10 y180 w190 h115", Axis states
-		
-		Top := 200
-		Left := 12
-		rows := 4
-		cols := 2
-		label_width := 20
-		item_Width := 50
-		item_height := 25
-		col_width := 110
-		
-		this.GuiAxisStates := []
-		Loop % rows {
-			row := A_Index - 1
-			axis := (row * cols) + 1
-			Loop % cols {
-				col := A_Index -1
-				Gui, Add, Text, % "x" Left + (col * col_width) " y" Top + (row * item_height) " w" label_width " center hwndhwnd", % this.AxisNames[axis]
-				Gui, Add, Text, % "x" Left + (col * col_width) + label_width " y" Top + (row * item_height) " w" item_width " center hwndhwnd"
-				this.GuiAxisStates[axis] := hwnd
-				axis++
-			}
-		}
-
-		Gui, Add, GroupBox, % "x10 y300 w190 h100", Hat states
-		Top := 320
-		rows := 2
-		cols := 2
-		
-		this.GuiHatStates := []
-		Loop % rows {
-			row := A_Index - 1
-			hat := (row * cols) + 1
-			Loop % cols {
-				col := A_Index -1
-				Gui, Add, Text, % "x" Left + (col * col_width) " y" Top + (row * item_height) " w" label_width " center hwndhwnd", % hat ":"
-				Gui, Add, Text, % "x" Left + (col * col_width) + label_width " y" Top + (row * item_height) " w" item_width " center hwndhwnd"
-				this.GuiHatStates[hat] := hwnd
-				hat++
-			}
-		}
-
-		Gui, Add, GroupBox, % "x208 y180 w" this.GUI_WIDTH - 200 " h220", Button states
-		
-		Top := 200
-		Left := 210
-		rows := 8
-		cols := 16
-		item_Width := 28
-		item_height := 25
-		this.GuiButtonStates := []
-		Loop % rows {
-			row := A_Index - 1
-			btn := (row * cols) + 1
-			Loop % cols {
-				col := A_Index - 1
-				Gui, Add, Text, % "x" Left + (col * item_width) " y" Top + (row * item_height) " w" item_width " center hwndhwnd", % Btn
-				this.GuiButtonStates[btn] := hwnd
-				btn++
-			}
-		}
-		
-
-
-		
-		Gui, Add, Text, xm Section, % "Time to process WM_INPUT message (Including time to assemble debug strings, but not update UI), in seconds: "
-		Gui, Add, Text, % "hwndhProcessTime w50 ys"
-		this.hProcessTime := hProcessTime
-		Gui, Show, y0, CHID Joystick Tester
-		
-		fn := this.DeviceSelected.Bind(this)
-		GuiControl +g, % this.hLV, % fn
-		
-		for handle, device in this.DevicesByHandle {
-			if (!device.NumButtons && !device.NumAxes){
-				; Ignore devices with no buttons or axes
-				continue
-			}
-			LV_Add(, handle, device.GUID, device.HumanName, device.NumButtons, device.AxisString, device.NumPOVs, device.VID, device.PID, device.UsagePage, device.Usage )
-		}
-	}
-	
-	DeviceSelected(){
-		static LastSelected := -1
-		; Listviews fire g-labels on down event and up event of click, filter out up event
-		LV_GetText(handle, LV_GetNext())
-		if (A_GuiEvent = "i"){
-			fn := this.AxisChanged.Bind(this)
-			this.DevicesByHandle[handle].RegisterAxisCallback(fn)
-			fn := this.HatChanged.Bind(this)
-			this.DevicesByHandle[handle].RegisterHatCallback(fn)
-			fn := this.ButtonChanged.Bind(this)
-			this.DevicesByHandle[handle].RegisterButtonCallback(fn)
-			
-			Loop 128 {
-				GuiControl, +cblack, % this.GuiButtonStates[A_Index]
-				GuiControl, , % this.GuiButtonStates[A_Index], % A_Index
-			}
-			Loop 8 {
-				GuiControl, , % this.GuiAxisStates[A_Index], % ""
-			}
-		}
-		return 1
-	}
-	
-	; The state of one or more buttons changed - walk the ButtonDelta array to see what changed.
-	ButtonChanged(device){
-		LV_GetText(handle, LV_GetNext())
-		if (device.handle = handle){
-			Loop % device.ButtonDelta.MaxIndex(){
-				; Update the GUI
-				if (device.ButtonDelta[A_Index].state){
-					col := "+cred"
-				} else {
-					col := "+cblack"
-				}
-				GuiControl, % col, % this.GuiButtonStates[device.ButtonDelta[A_Index].button]
-				GuiControl, , % this.GuiButtonStates[device.ButtonDelta[A_Index].button], % device.ButtonDelta[A_Index].button
-			}
-			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
-			GuiControl, , % this.hProcessTime, % device._ProcessTime
-		}
-	}
-
-	; The state of an Axis changed
-	AxisChanged(device){
-		LV_GetText(handle, LV_GetNext())
-		if (device.handle = handle){
-			Loop % device.AxisDelta.MaxIndex(){
-				; Update the GUI
-				GuiControl, , % this.GuiAxisStates[device.AxisDelta[A_Index].axis], % device.AxisDelta[A_Index].state
-			}
-			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
-			GuiControl, , % this.hProcessTime, % device._ProcessTime
-		}
-	}
-	
-	; The state of a Hat changed
-	HatChanged(device){
-		LV_GetText(handle, LV_GetNext())
-		if (device.handle = handle){
-			Loop % device.HatDelta.MaxIndex(){
-				; Update the GUI
-				GuiControl, , % this.GuiHatStates[device.HatDelta[A_Index].hat], % device.HatDelta[A_Index].state
-			}
-			; ToDo - remove from here as end of this routine is no longer end of WM_INPUT
-			GuiControl, , % this.hProcessTime, % device._ProcessTime
-		}
-	}
-}
-
-Esc::
-GuiClose:
-	ExitApp
 
 class CHID extends _CHID_Base {
 	NumDevices := 0						; The Number of current devices
@@ -755,17 +569,23 @@ class CHID extends _CHID_Base {
 				if (r < 0){
 					OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
 				}
-				
+				dLength := NumGet(dLength, 0 , "uint")
 				hat := 0
-				Loop % this.HIDP_CAPS.NumberInputValueCaps {
-					if (this.HIDP_VALUE_CAPS[A_Index].UsagePage != 1){
-						; Ignore things not on the page we subscribed to.
-						continue
-					}
-					;AxisIndex := this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin - 0x2F
+				
+				; Build lookup array of values by DataIndex
+				Values := []
+				Loop % dLength {
 					b := ((A_Index - 1) * 8)
-					AxisIndex := NumGet(dList, b, "uint") + 1
-					value := NumGet(dList, b + 4, "uint")
+					dIndex := NumGet(dList, b, "uint")
+					Values[dIndex] := NumGet(dList, b + 4, "uint")
+				}
+				
+				; Find values for each axis
+				Loop % this.HIDP_CAPS.NumberInputValueCaps {
+					; AxisIndex 1 is ALWAYS the X axis.
+					AxisIndex := this.HIDP_VALUE_CAPS[A_Index].NotRange.Usage - 0x2F
+					
+					value := Values[this.HIDP_VALUE_CAPS[A_Index].NotRange.DataIndex]
 					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
 						hat++
 						this.HatStates[hat] := value
@@ -775,65 +595,6 @@ class CHID extends _CHID_Base {
 						this.AxisStates[AxisIndex] := value
 						this.AxisDelta.Insert({axis: AxisIndex, state: value})
 					}
-					;MsgBox % "dindex: " dindex "`nAxisIndex: " AxisIndex "`nvalue: " value
-				/*
-					if (this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin = 0x39){
-						; hat switch
-						if (!hat_count){
-							; first hat processed
-							UsageValueByteLength := 8
-							VarSetCapacity(UsageValue, UsageValueByteLength)
-							;OutputDebug % "um: " this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							r := DllCall("Hid\HidP_GetUsageValueArray"
-								;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-								, "uint", this.HidP_Input	; vJoy seems to have a value of 1, so hard-code 0
-								, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
-								;, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
-								, "ushort", 0
-								, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-								, "Ptr", &UsageValue
-								, "Ushort", UsageValueByteLength
-								, "Ptr", &PreparsedData
-								, "Ptr", bRawData
-								, "Uint", dwSizeHid)
-							OutputDebug % "el: " A_LastError
-							if (r < 0){
-								OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValueArray DLL call - " this.HidP_ErrMsg(r)
-							}
-						}
-						hat_count++
-					} else {
-					*/
-						/*
-						;OutputDebug % "rid: " this.HIDP_VALUE_CAPS[A_Index].ReportID
-						r := DllCall("Hid\HidP_GetUsageValue"
-							;, "uint", this.HIDP_VALUE_CAPS[A_Index].ReportID
-							, "uint", this.HidP_Input		; vjoy has a ReportID of 1 - bug?
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].UsagePage
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].LinkCollection
-							, "ushort", this.HIDP_VALUE_CAPS[A_Index].Range.UsageMin
-							, "Ptr", &value
-							, "Ptr", &PreparsedData
-							, "Ptr", bRawData
-							, "Uint", dwSizeHid)
-						if (r < 0){
-							OutputDebug % A_ThisFunc " Error (" r ") in HidP_GetUsageValue DLL call - " this.HidP_ErrMsg(r)
-						}
-
-						value := NumGet(value,0,"Uint")
-						if (AxisIndex = 10){
-							if (this.HatStates[1] != value && !hat_count){
-								this.HatStates[1] := value
-								this.HatDelta.Insert({hat: 1, state: value})
-							}
-							hat_count++
-						}
-						if (this.AxisStates[AxisIndex] != value){
-							this.AxisStates[AxisIndex] := value
-							this.AxisDelta.Insert({axis: AxisIndex, state: value})
-						}
-						*/
-					;}
 				}
 				if (this._AxisCallback != 0 && this.AxisDelta.MaxIndex()){
 					(this._AxisCallback).(this)
@@ -858,7 +619,7 @@ class _CHID_Base {
 	static HIDP_STATUS_SUCCESS := 1114112, HIDP_STATUS_NOT_VALUE_ARRAY := -1072627701,HIDP_STATUS_BUFFER_TOO_SMALL := -1072627705, HIDP_STATUS_INCOMPATIBLE_REPORT_ID := -1072627702, HIDP_STATUS_USAGE_NOT_FOUND := -1072627708, HIDP_STATUS_INVALID_REPORT_LENGTH := -1072627709, HIDP_STATUS_INVALID_REPORT_TYPE := -1072627710, HIDP_STATUS_INVALID_PREPARSED_DATA := -1072627711
 	static AxisAssoc := {x:0x30, y:0x31, z:0x32, rx:0x33, ry:0x34, rz:0x35, sl1:0x36, sl2:0x37, sl3:0x38, pov1:0x39, Vx:0x40, Vy:0x41, Vz:0x42, Vbrx:0x44, Vbry:0x45, Vbrz:0x46} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
 	static AxisHexToName := {0x30:"x", 0x31:"y", 0x32:"z", 0x33:"rx", 0x34:"ry", 0x35:"rz", 0x36:"sl1", 0x37:"sl2", 0x38:"sl3", 0x39:"pov", 0x40:"Vx", 0x41:"Vy", 0x42:"Vz", 0x44:"Vbrx", 0x45:"Vbry", 0x46:"Vbrz"} ; Name (eg "x", "y", "z", "sl1") to HID Descriptor
-	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1"]
+	static AxisNames := ["X","Y","Z","RX","RY","RZ","SL0","SL1","SL2","POV"]
 
 	HidP_ErrMsg(ErrNum){
 		if (ErrNum = "") {
